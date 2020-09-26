@@ -1,0 +1,83 @@
+﻿<Window x:Class="CrypoGraph.LimitCondig"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:CrypoGraph"
+        mc:Ignorable="d"
+        Title="Order" Height="450" Width="300" WindowStartupLocation="CenterScreen" Background="Black" ResizeMode="NoResize">
+
+
+    <Grid>
+
+        <StackPanel>
+            <Border BorderThickness="2" BorderBrush="DarkOrange">
+                <Label Content="Line Order" Foreground="DarkOrange" HorizontalAlignment="Center"/>
+            </Border>
+
+
+            <UniformGrid Rows="1" Columns="2">
+                <Label FontWeight="Bold" Content="From:" HorizontalAlignment="Center"  Foreground="WhiteSmoke" />
+                <Label FontWeight="Bold" Content="To:" HorizontalAlignment="Center" Foreground="WhiteSmoke" />
+            </UniformGrid>
+
+
+
+            <UniformGrid Rows="1" Columns="2">
+                <Label  Content="{Binding StartString}" HorizontalAlignment="Center"  Foreground="DarkOrange" />
+                <Label Content="{Binding EndString}" HorizontalAlignment="Center"  Foreground="DarkOrange" />
+            </UniformGrid>
+            <UniformGrid Rows="5" Columns="2">
+
+                <Label VerticalAlignment="Center" Content="Order side: " Foreground="WhiteSmoke" HorizontalAlignment="Center"></Label>
+
+                <StackPanel Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Bottom">
+                    <RadioButton  Content="Buy" Foreground="WhiteSmoke" Margin="5" IsChecked="{Binding isBuy,Mode=TwoWay}">
+                    </RadioButton>
+                    <RadioButton Content="Sell" Foreground="WhiteSmoke" Margin="5" IsChecked="{Binding isSell,Mode=TwoWay}">
+                    </RadioButton>
+                </StackPanel>
+
+
+
+
+                <Label VerticalAlignment="Center" Content="Order type: " HorizontalAlignment="Center" Foreground="WhiteSmoke"></Label>
+                <ComboBox Name="ordertypecb" Margin="5,20,10,15" SelectionChanged="ComboBox_SelectionChanged" SelectedIndex="0">
+                    <ComboBoxItem Content="Limit"/>
+                    <ComboBoxItem Content="Market"/>
+                    <ComboBoxItem Content="CeilingMarket"/>
+                    <ComboBoxItem Content="CeilingLimit"/>
+                </ComboBox>
+
+
+
+
+                <Label VerticalAlignment="Center" Foreground="WhiteSmoke" Content="Quantity/Order:  " HorizontalAlignment="Center"></Label>
+
+                <TextBox Margin="5,20,10,15" Text="{Binding QuantityPerOrder, Mode=TwoWay}"/>
+
+
+                <Label VerticalAlignment="Center" Foreground="WhiteSmoke" Content="Time In Force: " HorizontalAlignment="Center"></Label>
+                <ComboBox Name="timeinforce" Margin="5,20,10,15" SelectionChanged="timeinforce_SelectionChanged" SelectedIndex="0">
+                    <ComboBoxItem Content="Fill or Kill"/>
+                    <ComboBoxItem Content="Good Till Cancelled"/>
+                    <ComboBoxItem Content="Immediate or Cancel"/>
+                </ComboBox>
+                
+                
+                <Label VerticalAlignment="Center" Foreground="WhiteSmoke" Content="Orders/Hour: " HorizontalAlignment="Center"></Label>
+                <ComboBox Name="limitOrdersPerHour" Margin="5,20,10,15" ItemsSource="{Binding OrdersPerHourOptions}" SelectionChanged="limitOrdersPerHour_SelectionChanged" SelectedIndex="0">
+                   
+                </ComboBox>
+
+
+                <Button Content="Place Order" Margin="10" Background="DarkOrange" Foreground="Black" FontWeight="Bold" Command="{Binding PlaceOrderCommand}" Click="Button_Click_1"/>
+                <Button Content="Cancel Order" Margin="10" Background="DarkOrange" Foreground="Black" FontWeight="Bold" Command="{Binding CancelOrderCommand}" Click="Button_Click"/>
+                <Label Content="{Binding ErrorMsg}" Foreground="Red" HorizontalAlignment="Center" Grid.ColumnSpan="2" Margin="38,0,-98,0" Width="207"/>
+
+            </UniformGrid>
+
+        </StackPanel>
+
+    </Grid>
+</Window>
