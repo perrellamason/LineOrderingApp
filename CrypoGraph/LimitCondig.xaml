@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:CrypoGraph"
         mc:Ignorable="d"
-        Title="Order" Height="450" Width="300" WindowStartupLocation="CenterScreen" Background="Black" ResizeMode="NoResize">
+        Title="Order" Height="510" Width="300" WindowStartupLocation="CenterScreen" Background="Black" ResizeMode="NoResize">
 
 
     <Grid>
@@ -26,6 +26,11 @@
             <UniformGrid Rows="1" Columns="2">
                 <Label  Content="{Binding StartString}" HorizontalAlignment="Center"  Foreground="DarkOrange" />
                 <Label Content="{Binding EndString}" HorizontalAlignment="Center"  Foreground="DarkOrange" />
+            </UniformGrid>
+
+            <UniformGrid Rows="1" Columns="2">
+                <TextBox  Text="{Binding StartStringPrice, Mode=TwoWay}" HorizontalAlignment="Center" Background="White" Foreground="DarkOrange" />
+                <TextBox Text="{Binding EndStringPrice, Mode=TwoWay}" HorizontalAlignment="Center" Background="White" Foreground="DarkOrange" />
             </UniformGrid>
             <UniformGrid Rows="5" Columns="2">
 

@@ -23,8 +23,24 @@ namespace CrypoGraph
         private LineSeries limitLine;
         private string Symbol;
         public LineOrder LineOrder;
+        public double Slope;
+        public double Yintercept;
+        private DataPoint Start;
+        private DataPoint End;
+
         public LimitConfigViewModel(DataPoint start, DataPoint end, LineSeries line, string symbol, decimal minTradeSize)
         {
+            OrdersPerHourOptions = new List<double>();
+
+            for (double i = 1; i < 61; i++)
+            {
+                OrdersPerHourOptions.Add(i);
+
+            }
+
+
+            Start = start;
+            End = end;
             OrderPlacedEvent = new ManualResetEvent(false);
             OrdersPerHour = 60;
             LineOrder = null;
@@ -34,11 +50,37 @@ namespace CrypoGraph
             QuantityPerOrder = minTradeSize;
             ErrorMsg = "";
             limitLine = line;
+            CalculateSlope(start,end);
+            CalculateYIntercept(start, end);
             
+
             StartString = DateTimeAxis.ToDateTime(start.X).ToString();
             EndString = DateTimeAxis.ToDateTime(end.X).ToString();
+            StartStringPrice = start.Y;
+            EndStringPrice = end.Y;
             PlaceOrderCommand = new RelayCommand(PlaceOrder, CanPlaceOrder);
             CancelOrderCommand = new RelayCommand(CancelOrder, CanCancel);
+        }
+
+        private void CalculateYIntercept(DataPoint start, DataPoint end)
+        {
+            //y - mx = b
+            if(Slope != 0)
+            {
+                Yintercept = start.Y - (Slope * start.X);
+            }
+            
+        }
+
+        public void CalculateSlope(DataPoint point1, DataPoint point2)
+        {
+            var slope = (point2.Y - point1.Y ) / (point2.X - point1.X);
+            Slope = slope;
+        }
+
+        public double CalculateLimitAtSpecificTime(double time)
+        { // y-b/ m = x
+            return (Slope * time) + Yintercept;
         }
 
         protected void OnPropertyChanged([CallerMemberName] string name = null)
@@ -51,7 +93,7 @@ namespace CrypoGraph
         public OrderSide OrderSide { get; set; }
         public OrderTypeV3 OrderType { get; set; }
         public TimeInForce TimeInForce { get; set; }
-        public int OrdersPerHour { get; set; }
+        public double OrdersPerHour { get; set; }
 
         public ICommand PlaceOrderCommand
         {
@@ -69,10 +111,13 @@ namespace CrypoGraph
         {
             if(isSell)
             {
-                OrderSide = OrderSide.Sell; 
-            }else if (isBuy)
+                OrderSide = OrderSide.Sell;
+                limitLine.Color = OxyColors.Green;
+            }
+            else if (isBuy)
             {
                 OrderSide = OrderSide.Buy;
+                limitLine.Color = OxyColors.Blue;
             }
             else
             {
@@ -80,8 +125,9 @@ namespace CrypoGraph
                 return;
             }
             string id;
-
-            LineOrder order = new LineOrder() { Symbol = Symbol, TimeInForce = TimeInForce, Start = StartString, End = EndString, LimitLineSeries = limitLine, OrderSide = OrderSide, OrderType = OrderType, OrderIDs = new List<string>(), OrdersPerHour = OrdersPerHour, QuantityPerOrder = QuantityPerOrder };
+            AddOrderPoints();
+            LineOrder order = new LineOrder() { Symbol = Symbol, TimeInForce = TimeInForce, Start = StartString, End = EndString, LimitLineSeries = limitLine,
+                OrderSide = OrderSide, OrderType = OrderType, OrderIDs = new List<string>(), OrdersPerHour = OrdersPerHour, QuantityPerOrder = QuantityPerOrder, Slope = Slope, YIntercept = Yintercept };
             LineOrder = order;
             Screen.Close();
             //decimal? limit = new decimal(0.1500);
@@ -90,6 +136,47 @@ namespace CrypoGraph
             //var orderInfo = client.GetOrder(placedOrder.Data.Id);
 
 
+        }
+
+        private void AddOrderPoints()
+        {
+            List<DataPoint> orderpoints = (List<DataPoint>) limitLine.ItemsSource;
+            var start = orderpoints[0];
+            orderpoints.RemoveAt(0);
+            var last = orderpoints[0];
+            orderpoints.Clear();
+
+
+            //use orders per  hour to calculate points
+            var time = DateTime.Now;
+            var timedouble = DateTimeAxis.ToDouble(time);
+            if(timedouble < start.X)
+            {
+                //the  first point should be the start point not now.
+                timedouble = start.X;
+                time = DateTimeAxis.ToDateTime(start.X);
+            }
+            var first = new DataPoint(timedouble, CalculateLimitAtSpecificTime(timedouble));
+            orderpoints.Insert(0,first);
+            //find interval value by dividing total line time by orders per hour
+
+            var minutesUntilOrder = 1.0 / (OrdersPerHour / 60.0);
+
+            DateTime timecounter = time;
+            int count = 0;
+            while(timecounter < DateTimeAxis.ToDateTime(End.X) && count < 50)
+            {
+                count++;
+                timecounter = timecounter.AddMinutes(minutesUntilOrder);
+
+                var nextXCorddouble = DateTimeAxis.ToDouble(timecounter);
+                orderpoints.Add(new DataPoint(nextXCorddouble, CalculateLimitAtSpecificTime(nextXCorddouble)));
+            }
+
+            orderpoints.Add(last);
+            limitLine.ItemsSource = orderpoints;
+            
+           
         }
 
         BittrexSocketClientV3 socketClient = new BittrexSocketClientV3();
@@ -173,16 +260,16 @@ namespace CrypoGraph
             //    label2.Invoke(new Action(() => { label2.Text = "BTC-ETH Volume: " + result.Data.Volume; }));
             //}
 
-            var subscription = socketClient.SubscribeToSymbolSummaryUpdatesAsync(summaries =>
-            {
+            //var subscription = socketClient.SubscribeToSymbolSummaryUpdatesAsync(summaries =>
+            //{
 
-            });
+            //});
 
 
 
-            var subscription3 = socketClient.SubscribeToOrderUpdatesAsync(order =>
-            {
-            });
+            //var subscription3 = socketClient.SubscribeToOrderUpdatesAsync(order =>
+            //{
+            //});
 
 
         }
@@ -204,6 +291,80 @@ namespace CrypoGraph
 
         }
 
+
+        private List<double> _OrdersPerHourOptions;
+        public List<double> OrdersPerHourOptions
+        {
+            get
+            {
+                return _OrdersPerHourOptions;
+            }
+
+            set
+            {
+                if (_OrdersPerHourOptions == value)
+                {
+                    return;
+                }
+                _OrdersPerHourOptions = value;
+                OnPropertyChanged("OrdersPerHourOptions");
+            }
+
+        }
+
+        public double CalculateTimeAtSpecificPrice(double price)
+        {//y = mx+b
+            return (price - Yintercept) / Slope;
+        }
+
+        private double _startstringprice;
+        public double StartStringPrice
+        {
+            get
+            {
+                return _startstringprice;
+            }
+
+            set
+            {
+                if (_startstringprice == value)
+                {
+                    return;
+                }
+                _startstringprice = value;
+                if(_startstringprice != 0)
+                {
+                    StartString = DateTimeAxis.ToDateTime(CalculateTimeAtSpecificPrice(_startstringprice)).ToString();
+                }
+                
+                OnPropertyChanged("StartStringPrice");
+            }
+
+        }
+
+        private double _endstringprice;
+        public double EndStringPrice
+        {
+            get
+            {
+                return _endstringprice;
+            }
+
+            set
+            {
+                if (_endstringprice == value)
+                {
+                    return;
+                }
+                _endstringprice = value;
+                if (_endstringprice != null)
+                {
+                    EndString = DateTimeAxis.ToDateTime(CalculateTimeAtSpecificPrice(_endstringprice)).ToString();
+                }
+                OnPropertyChanged("EndStringPrice");
+            }
+
+        }
 
 
         private string _startstring;

@@ -23,10 +23,12 @@ namespace CrypoGraph
 
         public string Symbol { get; set; }
 
-        public int OrdersPerHour { get; set; }
+        public double OrdersPerHour { get; set; }
 
         public decimal QuantityPerOrder { get; set; }
 
+        public double Slope { get; set; }
+        public double YIntercept { get; set; }
 
     }
 }

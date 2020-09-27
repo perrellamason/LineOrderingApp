@@ -50,6 +50,11 @@ namespace CrypoGraph
         public event PropertyChangedEventHandler PropertyChanged;
         protected void OnPropertyChanged([CallerMemberName] string name = null)
         {
+            if(name == "ActiveLineOrders")
+            {
+                showAllbtn_Checked(null, null);
+
+            }
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
         }
         private List<string> _listofcoins;
@@ -121,6 +126,21 @@ namespace CrypoGraph
             }
         }
 
+        
+        private string _ActionHistory;
+        public string ActionHistory
+        {
+            get
+            {
+                return _ActionHistory;
+            }
+            set
+            {
+                _ActionHistory = value;
+                OnPropertyChanged("ActionHistory");
+            }
+        }
+
         private BittrexOrderBookV3 _orderbook;
         public BittrexOrderBookV3 OrderBook
         {
@@ -159,9 +179,24 @@ namespace CrypoGraph
             set
             {
                 _actives = value;
+               
                 OnPropertyChanged("ActiveLineOrders");
             }
         }
+        private ObservableCollection<LineOrder> _ActiveLineOrdersFiltered;
+        public ObservableCollection<LineOrder> ActiveLineOrdersFiltered
+        {
+            get
+            {
+                return _ActiveLineOrdersFiltered;
+            }
+            set
+            {
+                _ActiveLineOrdersFiltered = value;
+                OnPropertyChanged("ActiveLineOrdersFiltered");
+            }
+        }
+        
 
         private ObservableCollection<BittrexOrderV3> _orderhistory;
         public ObservableCollection<BittrexOrderV3> ClosedOrders
@@ -188,6 +223,20 @@ namespace CrypoGraph
             {
                 _openorders = value;
                 OnPropertyChanged("OpenOrders");
+            }
+        }
+
+        private ObservableCollection<UpcomingOrder> _upcoming;
+        public ObservableCollection<UpcomingOrder> UpcomingOrders
+        {
+            get
+            {
+                return _upcoming;
+            }
+            set
+            {
+                _upcoming = value;
+                OnPropertyChanged("UpcomingOrders");
             }
         }
 
@@ -300,42 +349,81 @@ namespace CrypoGraph
                 {
                     OpenOrders = new ObservableCollection<BittrexOrderV3>(o.Data);
                 }
+
+                var balance = client.GetBalance(CurrentLoadedSymbol);
+
+                if(balance.Data != null)
+                {
+                    AccountBalance = balance.Data.Total.ToString();
+                }
+                else
+                {
+                    AccountBalance = "0.00";
+                }
+
             });
 
 
         }
 
-        public void BeginOrdering(LineOrder order)
+        public double CalculateLimitAtSpecificTime(double time, LineOrder order)
+        { // y-b/ m = x
+            return (order.Slope * time) + order.YIntercept;
+        }
+
+        public double CalculateTimeAtSpecificPrice(double price, LineOrder order)
+        {//y = mx+b
+            return (price - order.YIntercept) / order.Slope;
+        }
+
+       
+
+        public void MakeOrder(LineOrder order)
         {
             DateTime currenttime;
             decimal currentlimitprice;
             WebCallResult<BittrexOrderV3> linePointOrder;
-            new Thread(() =>
-            {
-                while (true)
+            
+                
+            currenttime = DateTime.Now;
+            var limit = CalculateLimitAtSpecificTime(DateTimeAxis.ToDouble(currenttime), order);
+
+                if (limit != 0)
                 {
-                    currenttime = DateTime.Now;
-                    var pointOnLine = order.LimitLineSeries.Points.FirstOrDefault(l => l.X == DateTimeAxis.ToDouble(currenttime));
+                    currentlimitprice = Convert.ToDecimal(limit);
+                    currentlimitprice = Convert.ToDecimal(currentlimitprice.ToString("F2"));
+                    linePointOrder = client.PlaceOrder(CurrentLoadedSymbol, order.OrderSide, order.OrderType, order.TimeInForce, order.QuantityPerOrder, currentlimitprice);
 
-
-                    if (pointOnLine.Y != 0)
+                    if (linePointOrder.Error != null)
                     {
-                        currentlimitprice = Convert.ToDecimal(pointOnLine.Y);
-                        linePointOrder = client.PlaceOrder(CurrentLoadedSymbol, order.OrderSide, order.OrderType, order.TimeInForce, order.QuantityPerOrder,currentlimitprice );
-
-                        if(linePointOrder.Error != null)
+                        Application.Current.Dispatcher.Invoke(() =>
                         {
-                            new Popup("Error", linePointOrder.Error.Message).Show();
-                        }
-                       
-
+                            ActionHistory += "Error: "+linePointOrder.Error.Message+"\n";
+                            //new Popup("Error", linePointOrder.Error.Message).Show();
+                        });
                     }
+                    else
+                    {
+                        order.OrderIDs.Add(linePointOrder.Data.Id);
 
-                    //var orderInfo = client.GetOrder(placedOrder.Data.Id);
-                    Thread.Sleep(10000);
+                    Application.Current.Dispatcher.Invoke(() =>
+                        {
+                            ActionHistory += order.OrderSide == OrderSide.Buy ? "Buy" : "Sell" + order.Symbol + " at $" + currentlimitprice + "\n";
+                            //new Popup("Order Placed", order.Symbol + " at $" + currentlimitprice).Show();
+                        });
+                    }
                 }
+                else
+                {
 
-            }).Start();
+                    Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        ActionHistory += "Limit price could not be calculated" + "\n";
+
+                        //new Popup("Error", "Limit price could not be calculated").Show();
+                    });
+
+                }
         }
 
         private void UpdateChart(BittrexSymbolSummaryV3 update)
@@ -343,6 +431,8 @@ namespace CrypoGraph
             var candles = (CandleStickSeries)plotmodel.Series[0];
             
         }
+        private Thread upcomingThread;
+        private Thread executeThread;
 
         public MainWindow()
         {
@@ -350,7 +440,7 @@ namespace CrypoGraph
             this.DataContext = this;
             this.Closed += MainWindow_Closed;
             InitializeComponent();
-
+            ActionHistory = "";
             Authenticate();
             DoBittrexNetStuff();
 
@@ -358,6 +448,8 @@ namespace CrypoGraph
             marketSummaries = JsonConvert.DeserializeObject<MarketSummary[]>(market24hoursummary);
 
             ActiveLineOrders = new ObservableCollection<LineOrder>();
+            ActiveLineOrdersFiltered = new ObservableCollection<LineOrder>();
+            UpcomingOrders = new ObservableCollection<UpcomingOrder>();
             ListOfCoins = new List<string>();
             CandleIntervals = new List<string>();
 
@@ -374,15 +466,19 @@ namespace CrypoGraph
             ListOfCoins = ListOfCoins;
             
             LoadChart("BTC-EUR", CandleInterval.Hour1);
-            
 
-           
+            StartLookingForUpcomingOrders();
+            StartLookingToExecuteOrders();
+
 
             }
 
         private void MainWindow_Closed(object sender, EventArgs e)
         {
             socketClient.UnsubscribeAll();
+            ExecuteOrdersThreadStopped = true;
+            UpcomingOrdersThreadStopped = true;
+            Thread.Sleep(500);
         }
 
         private void LoadChart(string symbol, CandleInterval interval)
@@ -425,6 +521,16 @@ namespace CrypoGraph
             if (o.Data != null)
             {
                 OpenOrders = new ObservableCollection<BittrexOrderV3>(o.Data);
+            }
+
+            var balance = client.GetBalance(CurrentLoadedSymbol);
+            if (balance.Data != null)
+            {
+                AccountBalance = balance.Data.Total.ToString();
+            }
+            else
+            {
+                AccountBalance = "0.00";
             }
 
             string intervalstring = "";
@@ -551,6 +657,231 @@ namespace CrypoGraph
            
         }
 
+        
+
+        public void StartLookingToExecuteOrders()
+        {
+            new Thread(() =>
+            {
+                while (!ExecuteOrdersThreadStopped)
+                {
+                    var timedouble = DateTimeAxis.ToDouble(DateTime.Now);
+                    var currettime = DateTime.Now;
+                    var errorbefore = currettime.AddSeconds(50);
+                    var errorafter = currettime.AddSeconds(-50);
+                    lock (UpcomingOrders)
+                    {
+                        foreach (UpcomingOrder order in UpcomingOrders)
+                        {//if the current time 30 seconds from now is greater than the upcoming order  time, make the order if it hasnt been made already
+                            if(currettime.AddSeconds(10).CompareTo(order.Time) > 0)
+                            {
+                                if (!order.StatusCompleted)
+                                {
+                                    order.StatusCompleted = true;
+                                    OnPropertyChanged("UpcomingOrders");
+                                    MakeOrder(order.Order);
+
+                                }
+                            }
+                          
+                        }
+                    }
+                    
+                }
+
+
+            }).Start();
+        }
+
+
+        private void UpdateOrders()
+        {
+            var d = client.GetClosedOrders(CurrentLoadedSymbol);
+            if (d.Data != null)
+            {
+                ClosedOrders = new ObservableCollection<BittrexOrderV3>(d.Data);
+            }
+
+
+            var o = client.GetOpenOrders(CurrentLoadedSymbol);
+            if (o.Data != null)
+            {
+                OpenOrders = new ObservableCollection<BittrexOrderV3>(o.Data);
+            }
+
+            var balance = client.GetBalance(CurrentLoadedSymbol);
+
+            if (balance.Data != null)
+            {
+                AccountBalance = balance.Data.Total.ToString();
+            }
+            else
+            {
+                AccountBalance = "0.00";
+            }
+        }
+        private bool UpcomingOrdersThreadStopped = false;
+        private bool ExecuteOrdersThreadStopped = false;
+
+        public void StartLookingForUpcomingOrders()
+        {
+            executeThread = new Thread(() => {
+                int count = 50;
+                while (!UpcomingOrdersThreadStopped)
+                {
+                    if(count == 500)//wait 5seconds
+                    {
+                        UpdateOrders();
+
+                        lock (UpcomingOrders)
+                        {
+                            //remove any past due upcoming orders from the list
+                            for (int i = 0; i < UpcomingOrders.Count; i++)
+                            {
+                                if (UpcomingOrders[i].Time.CompareTo(DateTime.Now) < 0 || UpcomingOrders[i].StatusCompleted)
+                                {
+                                    //order time has  passed.  it should have  been attempted or ordered
+                                    Dispatcher.Invoke(() =>
+                                    {
+                                        UpcomingOrders.RemoveAt(i);
+                                        OnPropertyChanged("UpcomingOrders");
+
+                                    });
+                                }
+                            }
+
+
+
+                            count = 0;
+                            var timedouble = DateTimeAxis.ToDouble(DateTime.Now);
+                            foreach (LineOrder order in ActiveLineOrders)
+                            {
+                                DataPoint nextorderPoint = new DataPoint(0, 0);
+                                var points = (List<DataPoint>)(order.LimitLineSeries.ItemsSource);
+                                for (int i = 0; i < points.Count; i++)
+                                {
+                                    if (points[i].X < timedouble)
+                                    {
+                                        //nextorderPoint = points[i];
+                                    }
+                                    else
+                                    {
+                                        nextorderPoint = points[i];
+                                        break; //use previous data point
+                                    }
+                                }
+                                if (nextorderPoint.X != 0 && nextorderPoint.Y != 0)
+                                {
+                                    var next = new UpcomingOrder() { Order = order, Price = nextorderPoint.Y.ToString(), Side = (order.OrderSide == OrderSide.Buy ? "Buy" : "Sell"), Time = DateTimeAxis.ToDateTime(nextorderPoint.X), TimeDisplay = DateTimeAxis.ToDateTime(nextorderPoint.X).ToString() };
+
+                                    if (!UpcomingOrders.Any(l => l.Time == next.Time && l.Price == next.Price))
+                                    {
+                                        Dispatcher.Invoke(() =>
+                                        {
+                                            UpcomingOrders.Add(next);
+                                            OnPropertyChanged("UpcomingOrders");
+
+                                        });
+                                    }
+                                    else
+                                    {
+                                        //already exists
+                                    }
+
+
+                                }
+                                else
+                                {
+                                    Dispatcher.Invoke(() =>
+                                    {
+                                        new Popup("Error Finding Next Order", "Could not determine next Order Point").Show();
+                                    });
+                                }
+                            }
+                        }
+                       
+                    }
+                    
+                    Thread.Sleep(10);
+                    count++;
+
+                }
+
+            });
+            executeThread.Start();
+
+        }
+
+        private void OverrideAddingUpcoming()
+        {
+            lock (UpcomingOrders)
+            {
+                //remove any past due upcoming orders from the list
+                for (int i = 0; i < UpcomingOrders.Count; i++)
+                {
+                    if (UpcomingOrders[i].Time.CompareTo(DateTime.Now) < 0)
+                    {
+                        //order time has  passed.  it should have  been attempted or ordered
+                        Dispatcher.Invoke(() =>
+                        {
+                            UpcomingOrders.RemoveAt(i);
+                            OnPropertyChanged("UpcomingOrders");
+
+                        });
+                    }
+                }
+
+
+
+                var timedouble = DateTimeAxis.ToDouble(DateTime.Now);
+                foreach (LineOrder order in ActiveLineOrders)
+                {
+                    DataPoint nextorderPoint = new DataPoint(0, 0);
+                    var points = (List<DataPoint>)(order.LimitLineSeries.ItemsSource);
+                    for (int i = 0; i < points.Count; i++)
+                    {
+                        if (points[i].X < timedouble)
+                        {
+                            //nextorderPoint = points[i];
+                        }
+                        else
+                        {
+                            nextorderPoint = points[i];
+                            break; //use previous data point
+                        }
+                    }
+                    if (nextorderPoint.X != 0 && nextorderPoint.Y != 0)
+                    {
+                        var next = new UpcomingOrder() { Order = order, Price = nextorderPoint.Y.ToString(), Side = (order.OrderSide == OrderSide.Buy ? "Buy" : "Sell"), Time = DateTimeAxis.ToDateTime(nextorderPoint.X), TimeDisplay = DateTimeAxis.ToDateTime(nextorderPoint.X).ToString() };
+
+                        if (!UpcomingOrders.Any(l => l.Time == next.Time && l.Price == next.Price))
+                        {
+                            Dispatcher.Invoke(() =>
+                            {
+                                UpcomingOrders.Add(next);
+                                OnPropertyChanged("UpcomingOrders");
+
+                            });
+                        }
+                        else
+                        {
+                            //already exists
+                        }
+
+
+                    }
+                    else
+                    {
+                        Dispatcher.Invoke(() =>
+                        {
+                            ActionHistory += "Could not determine next Order Point" + "\n";
+                            new Popup("Error Finding Next Order", "Could not determine next Order Point").Show();
+                        });
+                    }
+                }
+            }
+        }
+
         private void ShowLimitConfigWindow()
         {
             LimitConfigViewModel limitVM = new LimitConfigViewModel(StartPoint, EndPoint, LimitLineSeries, CurrentLoadedSymbol, CurrentMinTradeSize);
@@ -559,7 +890,10 @@ namespace CrypoGraph
             if(limitVM.LineOrder != null)
             {
                 ActiveLineOrders.Insert(0,limitVM.LineOrder);
-                BeginOrdering(limitVM.LineOrder);
+                OverrideAddingUpcoming();
+                LimitLineSeries = limitVM.LineOrder.LimitLineSeries;
+                plotmodel.InvalidatePlot(true);
+
                 OnPropertyChanged("ActiveLineOrders");
             }
             else
@@ -578,9 +912,13 @@ namespace CrypoGraph
         {
             if (plotmodel.Series.Any(l => l.Title == "Limit Line"))
             {
-                var match = plotmodel.Series.First(l => l.Title == "Limit Line");
-                plotmodel.Series.Remove(match);
-                plotmodel.InvalidatePlot(true);
+                while(plotmodel.Series.FirstOrDefault(l => l.Title == "Limit Line") != null)
+                {
+                    var match = plotmodel.Series.First(l => l.Title == "Limit Line");
+                    plotmodel.Series.Remove(match);
+                    plotmodel.InvalidatePlot(true);
+                }
+              
 
             }
         }
@@ -589,15 +927,7 @@ namespace CrypoGraph
         {
             //remove rpreivoous limit line if exists
             RemoveLimitLine();
-            var linecolor = OxyColors.Magenta;
-            if(side == OrderSide.Buy)
-            {
-                linecolor = OxyColors.Blue;
-            }
-            else if(side == OrderSide.Sell)
-            {
-                linecolor = OxyColors.OrangeRed;
-            }
+           
           
             if (line == null)
             {
@@ -605,8 +935,11 @@ namespace CrypoGraph
                 var listofpoints = new List<DataPoint>() { StartPoint, EndPoint };
                 var limitlineseries = new LineSeries();
                 limitlineseries.Title = "Limit Line";
-                limitlineseries.Color = linecolor;
+                limitlineseries.Color = OxyColors.Magenta;
                 limitlineseries.ItemsSource = listofpoints;
+                limitlineseries.MarkerFill = OxyColors.Gold;
+                limitlineseries.MarkerType = MarkerType.Circle;
+                limitlineseries.MarkerSize = 3;
                 plotmodel.Series.Add(limitlineseries);
                 plotmodel.InvalidatePlot(true);
                 LimitLineSeries                                                                                                                                                                         = limitlineseries;
@@ -722,6 +1055,12 @@ namespace CrypoGraph
             var orderToRemove = (LineOrder)activeordersLB.SelectedItem;
             RemoveLimitLine();
             ActiveLineOrders.Remove(orderToRemove);
+            if (UpcomingOrders.FirstOrDefault(l=> l.Order.LimitLineSeries == orderToRemove.LimitLineSeries) != null)
+            {
+                UpcomingOrders.Remove(UpcomingOrders.FirstOrDefault(l => l.Order.LimitLineSeries == orderToRemove.LimitLineSeries));
+                OnPropertyChanged("UpcomingOrders");
+            }
+
             OnPropertyChanged("ActiveLineOrders");
         }
 
@@ -740,6 +1079,72 @@ namespace CrypoGraph
                 Mouse.OverrideCursor = Cursors.Arrow;
             }
 
+        }
+
+        private void showAllbtn_Checked(object sender, RoutedEventArgs e)
+        {
+            
+            if ((bool)showAllbtn.IsChecked)
+            {
+                if(ActiveLineOrders != null)
+                {
+                    ActiveLineOrdersFiltered = new ObservableCollection<LineOrder>(ActiveLineOrders);
+
+                }
+
+            }
+            else if ((bool)buysonlybtn.IsChecked)
+            {
+                ActiveLineOrdersFiltered = new ObservableCollection<LineOrder>();
+
+                foreach (LineOrder order in ActiveLineOrders)
+                {
+                    if (order.OrderSide == OrderSide.Buy)
+                    {
+                        Dispatcher.Invoke(() => {
+                            ActiveLineOrdersFiltered.Add(order);
+                        });
+
+                    }
+                }
+            }
+            else if ((bool)sellsonlybtn.IsChecked)
+            {
+                ActiveLineOrdersFiltered = new ObservableCollection<LineOrder>();
+
+                foreach (LineOrder order in ActiveLineOrders)
+                {
+                    if (order.OrderSide == OrderSide.Sell)
+                    {
+                        Dispatcher.Invoke(() => {
+                            ActiveLineOrdersFiltered.Add(order);
+                        });
+
+                    }
+                }
+            }
+            else
+            {
+                ActiveLineOrdersFiltered = new ObservableCollection<LineOrder>(ActiveLineOrders);
+
+            }
+            OnPropertyChanged("ActiveLineOrdersFiltered");
+        }
+
+        private void Button_Click_2(object sender, RoutedEventArgs e)
+        {
+            ShowAllLimitLines();
+        }
+
+        private void ShowAllLimitLines()
+        {
+            foreach(LineOrder order in ActiveLineOrders)
+            {
+                if (!plotmodel.Series.Contains(order.LimitLineSeries))
+                {
+                    plotmodel.Series.Add(order.LimitLineSeries);
+                    plotmodel.InvalidatePlot(true);                }
+            }
         }
     }
 

@@ -51,11 +51,11 @@
                 <Label Content="Active Line Orders" Foreground="WhiteSmoke" FontWeight="Black" HorizontalAlignment="Center"/>
 
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                    <RadioButton Content="All" Foreground="WhiteSmoke" Margin="5"/>
-                    <RadioButton Content="Buys Only" Foreground="WhiteSmoke" Margin="5"/>
-                    <RadioButton Content="Sells Only" Foreground="WhiteSmoke" Margin="5"/>
+                    <RadioButton Name="showAllbtn" Content="All" IsChecked="True" Foreground="WhiteSmoke" Margin="5" Checked="showAllbtn_Checked"/>
+                    <RadioButton Name="buysonlybtn" Content="Buys Only" Foreground="WhiteSmoke" Margin="5" Checked="showAllbtn_Checked"/>
+                    <RadioButton Name="sellsonlybtn" Content="Sells Only" Foreground="WhiteSmoke" Margin="5" Checked="showAllbtn_Checked"/>
                 </StackPanel>
-                <ListBox Name="activeordersLB" BorderBrush="Black"  Background="Transparent" ItemsSource="{Binding ActiveLineOrders}" SelectionChanged="ListBox_SelectionChanged">
+                <ListBox Name="activeordersLB" BorderBrush="Black"  Background="Transparent" ItemsSource="{Binding ActiveLineOrdersFiltered}" SelectionChanged="ListBox_SelectionChanged">
                     <ListBox.ItemTemplate>
                         <DataTemplate>
                             <Grid >
@@ -78,8 +78,9 @@
                 </ListBox>
 
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                    <Button Name="AddCancelBtn" Content="Add" Margin="10" Width="50" Background="Transparent" Foreground="Orange" Click="Button_Click_1"/>
-                    <Button Content="Remove" Margin="10" Width="50" Background="Transparent" Foreground="Orange" Click="Button_Click"/>
+                    <Button Name="AddCancelBtn" Content="Add" Margin="5" Width="50" Background="Transparent" Foreground="Orange" Click="Button_Click_1"/>
+                    <Button Content="Remove" Margin="5" Width="50" Background="Transparent" Foreground="Orange" Click="Button_Click"/>
+                    <Button Content="View All" Margin="5" Width="50" Background="Transparent" Foreground="Orange" Click="Button_Click_2"/>
                 </StackPanel>
 
                 <Label Content="Orders" Background="Transparent" Foreground="WhiteSmoke" FontWeight="Bold" HorizontalAlignment="Center"/>
@@ -96,14 +97,13 @@
                                         </Grid.RowDefinitions>
 
                                         <UniformGrid Rows="1" Columns="4" Grid.Row="1">
-                                            <TextBlock Grid.Row="1" Text="Side:"  Foreground="DarkOrange" HorizontalAlignment="Left"/>
+                                            <TextBlock Grid.Row="1" Text="Side:"  Foreground="WhiteSmoke" HorizontalAlignment="Left"/>
                                             <TextBlock Grid.Row="1" Text="{Binding Direction}"  Foreground="DarkOrange" HorizontalAlignment="Center"/>
-                                            <TextBlock  Grid.Row="1" Text="Limit: "  Foreground="DarkOrange" HorizontalAlignment="Right"/>
+                                            <TextBlock  Grid.Row="1" Text="Limit: "  Foreground="WhiteSmoke" HorizontalAlignment="Right"/>
                                             <TextBlock  Grid.Row="1" Text="{Binding Limit}"  Foreground="DarkOrange" HorizontalAlignment="Right"/>
-                                            <TextBlock  Grid.Row="1" Text="Limit: "  Foreground="DarkOrange" HorizontalAlignment="Right"/>
+                                            <TextBlock  Grid.Row="1" Text="Limit: "  Foreground="WhiteSmoke" HorizontalAlignment="Right"/>
                                             <TextBlock  Grid.Row="1" Text="{Binding Limit}"  Foreground="DarkOrange" HorizontalAlignment="Right"/>
-                                            <TextBlock  Grid.Row="1" Text="Limit: "  Foreground="DarkOrange" HorizontalAlignment="Right"/>
-                                            <TextBlock  Grid.Row="1" Text="{Binding Limit}"  Foreground="DarkOrange" HorizontalAlignment="Right"/>
+                                           
                                         </UniformGrid>
 
                                     </Grid>
@@ -124,13 +124,13 @@
                                         </Grid.RowDefinitions>
 
                                         <UniformGrid Rows="2" Columns="4" Grid.Row="1">
-                                            <TextBlock Grid.Row="1" Text="Side:"  Foreground="DarkOrange" />
+                                            <TextBlock Grid.Row="1" Text="Side:"  Foreground="WhiteSmoke" />
                                             <TextBlock Grid.Row="1" Text="{Binding Direction}"  Foreground="DarkOrange" />
-                                            <TextBlock  Grid.Row="1" Text="Limit: "  Foreground="DarkOrange" />
+                                            <TextBlock  Grid.Row="1" Text="Limit: "  Foreground="WhiteSmoke" />
                                             <TextBlock  Grid.Row="1" Text="{Binding Limit}"  Foreground="DarkOrange" />
-                                            <TextBlock  Grid.Row="1" Text="Proceeds: "  Foreground="DarkOrange" />
+                                            <TextBlock  Grid.Row="1" Text="Proceeds: "  Foreground="WhiteSmoke" />
                                             <TextBlock  Grid.Row="1" Text="{Binding Proceeds}"  Foreground="DarkOrange" />
-                                            <TextBlock  Grid.Row="1" Text="Qty: "  Foreground="DarkOrange" />
+                                            <TextBlock  Grid.Row="1" Text="Qty: "  Foreground="WhiteSmoke" />
                                             <TextBlock  Grid.Row="1" Text="{Binding FillQuantity}"  Foreground="DarkOrange"/>
                                         </UniformGrid>
 
@@ -141,15 +141,47 @@
 
                     </TabItem>
 
+                    <TabItem Header="Upcoming" HorizontalAlignment="Center">
+                        <ListBox Name="ssn" BorderBrush="Black"  Background="Transparent" ItemsSource="{Binding UpcomingOrders}">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid >
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="*"/>
+                                            <RowDefinition Height="*"/>
+                                        </Grid.RowDefinitions>
+
+                                        <StackPanel Orientation="Vertical" Grid.Row="1">
+                                            <TextBlock Grid.Row="1" Text="Side:"  Foreground="WhiteSmoke" />
+                                            <TextBlock Grid.Row="1" Text="{Binding Side}"  Foreground="DarkOrange" />
+                                            <TextBlock  Grid.Row="1" Text="Time: "  Foreground="WhiteSmoke" />
+                                            <TextBlock  Grid.Row="1" Text="{Binding TimeDisplay}"  Foreground="DarkOrange" />
+                                            <TextBlock  Grid.Row="1" Text="Price: "  Foreground="WhiteSmoke" />
+                                            <TextBlock  Grid.Row="1" Text="{Binding Price}"  Foreground="DarkOrange" />
+                                           
+                                        </StackPanel>
+
+                                    </Grid>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+
+                    </TabItem>
                 </TabControl>
 
-              
+                <Label Content="History" Foreground="WhiteSmoke" FontWeight="Bold" HorizontalAlignment="Center"/>
+                <Border BorderBrush="DarkOrange" BorderThickness="1" Margin="5">
+                    <ScrollViewer>
+                        <TextBlock Text="{Binding ActionHistory}" Foreground="Gold"></TextBlock>
+                    </ScrollViewer>
+                </Border>
             </StackPanel>
 
         </Border>
+       
 
-        <Border BorderBrush="Gray" Grid.Row="3" Grid.Column="1" BorderThickness="2">
-            <UniformGrid Rows="2" Columns="3" >
+        <Border BorderBrush="Gray" Grid.Row="3" Grid.Column="1" BorderThickness="2" Margin="15">
+            <UniformGrid Rows="1" Columns="3" >
                 <StackPanel Orientation="Horizontal">
                     <Label Content="Account Balance: " Foreground="Gold"/>
                     <Label Content="{Binding AccountBalance}" Foreground="WhiteSmoke"/>
@@ -165,18 +197,7 @@
                     <Label Content="{Binding CurrentMinTradeSize}" Foreground="WhiteSmoke"/>
                 </StackPanel>
 
-                <StackPanel Orientation="Horizontal">
-                    <Label Content="Current Limit: " Foreground="DarkOrange"/>
-                    <Label Content="{Binding CurrentLimit}" Foreground="WhiteSmoke"/>
-                </StackPanel>
-                <StackPanel Orientation="Horizontal">
-                    <Label Content="Order #: " Foreground="DarkOrange"/>
-                    <Label Content="{Binding CurrentLimitOrderNo}" Foreground="WhiteSmoke"/>
-                </StackPanel>
-                <StackPanel Orientation="Horizontal">
-                    <Label Content="Status: " Foreground="DarkOrange"/>
-                    <Label Content="{Binding CurrentLimitStatus}" Foreground="Green"/>
-                </StackPanel>
+                
             </UniformGrid>
         </Border>
         

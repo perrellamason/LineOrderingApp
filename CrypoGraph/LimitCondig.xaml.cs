@@ -85,7 +85,7 @@ namespace CrypoGraph
 
         private void limitOrdersPerHour_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-
+            VM.OrdersPerHour = (double)limitOrdersPerHour.SelectedValue;
         }
     }
 }
