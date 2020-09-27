@@ -126,10 +126,25 @@ namespace CrypoGraph
             }
             string id;
             AddOrderPoints();
-            LineOrder order = new LineOrder() { Symbol = Symbol, TimeInForce = TimeInForce, Start = StartString, End = EndString, LimitLineSeries = limitLine,
-                OrderSide = OrderSide, OrderType = OrderType, OrderIDs = new List<string>(), OrdersPerHour = OrdersPerHour, QuantityPerOrder = QuantityPerOrder, Slope = Slope, YIntercept = Yintercept };
+            LineOrder order = new LineOrder()
+            {
+                Symbol = Symbol,
+                TimeInForce = TimeInForce,
+                Start = StartString,
+                End = EndString,
+                LimitLineSeries = limitLine,
+                OrderSide = OrderSide,
+                OrderType = OrderType,
+                OrderIDs = new List<string>(),
+                OrdersPerHour = OrdersPerHour,
+                QuantityPerOrder = QuantityPerOrder,
+                Slope = Slope,
+                YIntercept = Yintercept
+            };
             LineOrder = order;
             Screen.Close();
+
+
             //decimal? limit = new decimal(0.1500);
             //var client = new BittrexClientV3();
             //var placedOrder = client.PlaceOrder("ADA-USD", OrderSide.Buy, OrderTypeV3.Limit, TimeInForce, 50, limit);
@@ -138,7 +153,7 @@ namespace CrypoGraph
 
         }
 
-        private void AddOrderPoints()
+        private bool AddOrderPoints()
         {
             List<DataPoint> orderpoints = (List<DataPoint>) limitLine.ItemsSource;
             var start = orderpoints[0];
@@ -146,6 +161,24 @@ namespace CrypoGraph
             var last = orderpoints[0];
             orderpoints.Clear();
 
+            //if (!PreserveLine)
+            //{
+            //    try
+            //    {
+            //        var newstartdate = DateTime.Parse(StartString);
+
+            //    }
+            //    catch
+            //    {
+            //        ErrorMsg = "Could not parse Start String";
+                    
+            //    }
+            //    DateTime.TryParse(StartString, )
+
+            //    var newstart = new DataPoint()
+            //    //override the start and end postions with what was typed in UI
+
+            //}
 
             //use orders per  hour to calculate points
             var time = DateTime.Now;
@@ -156,6 +189,9 @@ namespace CrypoGraph
                 timedouble = start.X;
                 time = DateTimeAxis.ToDateTime(start.X);
             }
+
+            
+
             var first = new DataPoint(timedouble, CalculateLimitAtSpecificTime(timedouble));
             orderpoints.Insert(0,first);
             //find interval value by dividing total line time by orders per hour
@@ -164,7 +200,7 @@ namespace CrypoGraph
 
             DateTime timecounter = time;
             int count = 0;
-            while(timecounter < DateTimeAxis.ToDateTime(End.X) && count < 50)
+            while(timecounter < DateTimeAxis.ToDateTime(End.X) && count < 5000)
             {
                 count++;
                 timecounter = timecounter.AddMinutes(minutesUntilOrder);
@@ -172,11 +208,15 @@ namespace CrypoGraph
                 var nextXCorddouble = DateTimeAxis.ToDouble(timecounter);
                 orderpoints.Add(new DataPoint(nextXCorddouble, CalculateLimitAtSpecificTime(nextXCorddouble)));
             }
+            if(count == 5000)
+            {
+                new Popup("Too Many Order Points", "Currently, only 5000 orders are allowed per line.  You can shorten the line or decrease the Orders/Hour to avoid this").Show();
+            }
 
             orderpoints.Add(last);
             limitLine.ItemsSource = orderpoints;
-            
-           
+
+            return true;
         }
 
         BittrexSocketClientV3 socketClient = new BittrexSocketClientV3();
@@ -291,6 +331,7 @@ namespace CrypoGraph
 
         }
 
+        public bool PreserveLine { get; set; }
 
         private List<double> _OrdersPerHourOptions;
         public List<double> OrdersPerHourOptions
@@ -332,7 +373,7 @@ namespace CrypoGraph
                     return;
                 }
                 _startstringprice = value;
-                if(_startstringprice != 0)
+                if(_startstringprice != 0 && PreserveLine)
                 {
                     StartString = DateTimeAxis.ToDateTime(CalculateTimeAtSpecificPrice(_startstringprice)).ToString();
                 }
@@ -357,7 +398,7 @@ namespace CrypoGraph
                     return;
                 }
                 _endstringprice = value;
-                if (_endstringprice != null)
+                if (_endstringprice != null && PreserveLine)
                 {
                     EndString = DateTimeAxis.ToDateTime(CalculateTimeAtSpecificPrice(_endstringprice)).ToString();
                 }

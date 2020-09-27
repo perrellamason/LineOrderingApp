@@ -391,14 +391,14 @@ namespace CrypoGraph
                 if (limit != 0)
                 {
                     currentlimitprice = Convert.ToDecimal(limit);
-                    currentlimitprice = Convert.ToDecimal(currentlimitprice.ToString("F2"));
+                    currentlimitprice = Convert.ToDecimal(currentlimitprice.ToString("F5"));
                     linePointOrder = client.PlaceOrder(CurrentLoadedSymbol, order.OrderSide, order.OrderType, order.TimeInForce, order.QuantityPerOrder, currentlimitprice);
 
                     if (linePointOrder.Error != null)
                     {
                         Application.Current.Dispatcher.Invoke(() =>
                         {
-                            ActionHistory += "Error: "+linePointOrder.Error.Message+"\n";
+                            ActionHistory += DateTime.Now.TimeOfDay.ToString()+" - " + "Error: "+linePointOrder.Error.Message+"\n";
                             //new Popup("Error", linePointOrder.Error.Message).Show();
                         });
                     }
@@ -408,7 +408,7 @@ namespace CrypoGraph
 
                     Application.Current.Dispatcher.Invoke(() =>
                         {
-                            ActionHistory += order.OrderSide == OrderSide.Buy ? "Buy" : "Sell" + order.Symbol + " at $" + currentlimitprice + "\n";
+                            ActionHistory += DateTime.Now.TimeOfDay.ToString() + " - " + (order.OrderSide == OrderSide.Buy ? "Buy" : "Sell") + order.Symbol + " at $" + currentlimitprice + "\n";
                             //new Popup("Order Placed", order.Symbol + " at $" + currentlimitprice).Show();
                         });
                     }
@@ -418,7 +418,7 @@ namespace CrypoGraph
 
                     Application.Current.Dispatcher.Invoke(() =>
                     {
-                        ActionHistory += "Limit price could not be calculated" + "\n";
+                        ActionHistory += DateTime.Now.TimeOfDay.ToString() + " - " + "Limit price could not be calculated" + "\n";
 
                         //new Popup("Error", "Limit price could not be calculated").Show();
                     });
@@ -440,6 +440,8 @@ namespace CrypoGraph
             this.DataContext = this;
             this.Closed += MainWindow_Closed;
             InitializeComponent();
+            SignIn signin = new SignIn();
+            signin.Show();
             ActionHistory = "";
             Authenticate();
             DoBittrexNetStuff();
@@ -469,7 +471,7 @@ namespace CrypoGraph
 
             StartLookingForUpcomingOrders();
             StartLookingToExecuteOrders();
-
+            StartUpdatingGraph();
 
             }
 
@@ -478,6 +480,7 @@ namespace CrypoGraph
             socketClient.UnsubscribeAll();
             ExecuteOrdersThreadStopped = true;
             UpcomingOrdersThreadStopped = true;
+            UpdateGraphThreadStopped = true;
             Thread.Sleep(500);
         }
 
@@ -627,6 +630,11 @@ namespace CrypoGraph
             model.MouseDown += Model_MouseDown; ;
 
             plotview.Model = model;
+
+            if(LimitLineSeries != null)
+            {
+                DrawLimitLine(OrderSide.Buy, LimitLineSeries);
+            }
         }
         bool drawingline;
         private void Model_MouseDown(object sender, OxyMouseDownEventArgs e)
@@ -722,11 +730,38 @@ namespace CrypoGraph
         }
         private bool UpcomingOrdersThreadStopped = false;
         private bool ExecuteOrdersThreadStopped = false;
+        private bool UpdateGraphThreadStopped = false;
+
+        public void StartUpdatingGraph()
+        {
+            new Thread(() => {
+
+                int count = 0;
+                while (!UpdateGraphThreadStopped)
+                {
+                    if (count == 12000)//2 min
+                    {
+                        Dispatcher.Invoke(() =>
+                        {
+                            Cursor = Cursors.Wait;
+                            LoadChart(CurrentLoadedSymbol, CurrentInterval);
+                            Cursor = Cursors.Arrow;
+                        });
+
+                        
+                    }
+                    Thread.Sleep(10);
+                    count++;
+                }
+
+            }).Start();
+           
+        }
 
         public void StartLookingForUpcomingOrders()
         {
             executeThread = new Thread(() => {
-                int count = 50;
+                int count = 500;
                 while (!UpcomingOrdersThreadStopped)
                 {
                     if(count == 500)//wait 5seconds

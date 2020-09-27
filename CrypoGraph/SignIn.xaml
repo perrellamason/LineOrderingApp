@@ -1,0 +1,18 @@
+﻿<Window x:Class="CrypoGraph.SignIn"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:CrypoGraph"
+        mc:Ignorable="d"
+        Title="Sign In" Height="175" Width="300" Background="Black" Foreground="DarkOrange" WindowStartupLocation="CenterScreen">
+    <Grid>
+        <UniformGrid Rows="2" Columns="2">
+            <Label Content="API Key: " Width="100" Height="30"  Foreground="DarkOrange" HorizontalAlignment="Right"/>
+            <TextBox Width="150" Height="30"/>
+            <Label Content="API Secret: " Width="100" Height="30"  Foreground="DarkOrange" HorizontalAlignment="Right"/>
+            <TextBox Width="150" Height="30" />
+        </UniformGrid>
+        <Button Content="Log In" HorizontalAlignment="Center" VerticalAlignment="Bottom"/>
+    </Grid>
+</Window>

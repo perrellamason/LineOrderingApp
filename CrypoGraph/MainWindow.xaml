@@ -182,7 +182,7 @@
 
                 <Label Content="History"  FontSize="14" Foreground="WhiteSmoke" FontWeight="Bold" HorizontalAlignment="Center"/>
                 <Border BorderBrush="DarkOrange" BorderThickness="1" Margin="5">
-                    <ScrollViewer MaxHeight="50">
+                    <ScrollViewer MaxHeight="100">
                         <TextBlock Text="{Binding ActionHistory}" Foreground="Gold"></TextBlock>
                     </ScrollViewer>
                 </Border>
