@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:CrypoGraph"
         mc:Ignorable="d"
-        Title="Order" Height="450" Width="300" WindowStartupLocation="CenterScreen" Background="Black" ResizeMode="NoResize">
+        Title="Order" Height="550" Width="300" WindowStartupLocation="CenterScreen" Background="Black" ResizeMode="NoResize">
 
 
     <Grid>
@@ -27,7 +27,15 @@
                 <Label  Content="{Binding StartString}" HorizontalAlignment="Center"  Foreground="DarkOrange" />
                 <Label Content="{Binding EndString}" HorizontalAlignment="Center"  Foreground="DarkOrange" />
             </UniformGrid>
+
+            <UniformGrid Rows="2" Columns="2">
+                <TextBox  Text="{Binding StartStringPrice, Mode=TwoWay}" HorizontalAlignment="Center" Background="White" Foreground="DarkOrange" />
+                <TextBox Text="{Binding EndStringPrice, Mode=TwoWay}" HorizontalAlignment="Center" Background="White" Foreground="DarkOrange" />
+            </UniformGrid>
+            <CheckBox Name="preserveCB" Checked="CheckBox_Checked" Unchecked="preserveCB_Unchecked" IsChecked="True" Content="Preserve Line" Foreground="WhiteSmoke" Margin="5" HorizontalAlignment="Center"/>
+
             <UniformGrid Rows="5" Columns="2">
+                
 
                 <Label VerticalAlignment="Center" Content="Order side: " Foreground="WhiteSmoke" HorizontalAlignment="Center"></Label>
 

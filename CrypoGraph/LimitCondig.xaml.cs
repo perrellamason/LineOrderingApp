@@ -85,7 +85,17 @@ namespace CrypoGraph
 
         private void limitOrdersPerHour_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
+            VM.OrdersPerHour = (double)limitOrdersPerHour.SelectedValue;
+        }
 
+        private void CheckBox_Checked(object sender, RoutedEventArgs e)
+        {
+            VM.PreserveLine = (bool)preserveCB.IsChecked;
+        }
+
+        private void preserveCB_Unchecked(object sender, RoutedEventArgs e)
+        {
+            VM.PreserveLine = (bool)preserveCB.IsChecked;
         }
     }
 }

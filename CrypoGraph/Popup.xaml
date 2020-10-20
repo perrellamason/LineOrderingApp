@@ -5,11 +5,11 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:CrypoGraph"
         mc:Ignorable="d"
-        Title="Popup" Height="120" Width="300" ResizeMode="NoResize" WindowStartupLocation="CenterScreen" Background="WhiteSmoke">
+        Title="Popup" Height="120" Width="300" ResizeMode="NoResize" WindowStartupLocation="CenterScreen" Background="Black">
     <Border BorderBrush="DarkOrange" BorderThickness="2">
         <Grid>
             <StackPanel Orientation="Vertical">
-                <TextBlock Height="50" x:Name="messagebx" TextAlignment="Center" VerticalAlignment="Center" Margin="8" Text="fsdf"/>
+                <TextBlock Height="42" x:Name="messagebx" Foreground="DarkOrange" TextAlignment="Center" VerticalAlignment="Center" Margin="8" Text="fsdf"/>
                 <Button Content="Ok" Margin="2" HorizontalAlignment="Center" Width="40"/>
             </StackPanel>
 
