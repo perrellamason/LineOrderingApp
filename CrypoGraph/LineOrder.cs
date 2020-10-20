@@ -27,6 +27,8 @@ namespace CrypoGraph
 
         public decimal QuantityPerOrder { get; set; }
 
+        public string LastPlacedOrderId {get; set;}
+
 
     }
 }

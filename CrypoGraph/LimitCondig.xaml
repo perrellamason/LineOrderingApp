@@ -58,7 +58,7 @@
 
 
                 <Label VerticalAlignment="Center" Foreground="WhiteSmoke" Content="Time In Force: " HorizontalAlignment="Center"></Label>
-                <ComboBox Name="timeinforce" Margin="5,20,10,15" SelectionChanged="timeinforce_SelectionChanged" SelectedIndex="0">
+                <ComboBox Name="timeinforce" Margin="5,20,10,15" SelectionChanged="timeinforce_SelectionChanged" SelectedIndex="1">
                     <ComboBoxItem Content="Fill or Kill"/>
                     <ComboBoxItem Content="Good Till Cancelled"/>
                     <ComboBoxItem Content="Immediate or Cancel"/>

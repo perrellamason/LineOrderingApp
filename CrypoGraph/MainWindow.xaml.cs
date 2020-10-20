@@ -216,63 +216,6 @@ namespace CrypoGraph
 
             Authenticate();
 
-            //using (var client = new BittrexClient())
-            //{
-            //    // public
-            //    var markets = client.GetSymbols();
-            //    var currencies = client.GetCurrencies();
-            //    var price = client.GetTicker("BTC-ETH");
-            //    var marketSummary = client.GetSymbolSummary("BTC-ETH");
-            //    marketSummaries1 = client.GetSymbolSummaries();
-            //    var orderbook = client.GetOrderBook("BTC-ETH");
-            //    //var marketHistory = client.GetSy("BTC-ETH");
-
-            //    // private
-            //    // Commented to prevent accidental order placement
-
-
-
-            //    var openOrders = client.GetOpenOrders("BTC-NEO");
-            //    var orderHistory = client.GetOrderHistory("BTC-NEO");
-
-            //    var balance = client.GetBalance("NEO");
-            //    var balances = client.GetBalances();
-            //    var depositAddress = client.GetDepositAddress("BTC");
-            //    var withdraw = client.Withdraw("TEST", 1, "TEST", "TEST");
-            //    var withdrawHistory = client.GetWithdrawalHistory();
-            //    var depositHistory = client.GetDepositHistory();
-            //}
-
-            ////placing limit order
-            //using (var client = new BittrexClientV3())
-            //{
-            //    var marketSummary = client.GetSymbolSummary("ADA-USD");
-
-
-            //    //decimal? limit = new decimal(0.1500);
-
-            //    //var placedOrder = client.PlaceOrder("ADA-USD", OrderSide.Buy, OrderTypeV3.Limit, TimeInForce, 50, limit);
-            //    //var orderInfo = client.GetOrder(placedOrder.Data.Id);
-            //    //var canceledOrder = client.CancelOrder(placedOrder.Data.Uuid);
-
-            //}
-
-
-            // Websocket
-
-            //socketClient.SubscribeToMarketSummariesUpdate(data =>
-            //{
-            //    var eth = data.SingleOrDefault(d => d.MarketName == "BTC-ETH");
-            //    if (eth != null)
-            //        UpdateLastPrice(eth.Last);
-            //});
-
-            //using (var client = new BittrexClient())
-            //{
-            //    var result = client.GetMarketSummary("BTC-ETH");
-            //    UpdateLastPrice(result.Data.Last);
-            //    label2.Invoke(new Action(() => { label2.Text = "BTC-ETH Volume: " + result.Data.Volume; }));
-            //}
 
             var subscription = socketClient.SubscribeToSymbolSummaryUpdatesAsync(summaries =>
             {
@@ -321,17 +264,35 @@ namespace CrypoGraph
                     if (pointOnLine.Y != 0)
                     {
                         currentlimitprice = Convert.ToDecimal(pointOnLine.Y);
+                        if (order.TimeInForce == TimeInForce.GoodTillCancelled)
+                        {
+                            if (order.LastPlacedOrderId != null)//cancel previous open order
+                            {
+                                var res = client.CancelConditionalOrder(order.LastPlacedOrderId);
+                                if(res.Error != null)
+                                {
+                                    new Popup("Failed to Cancel Order", res.Error.Message).Show();
+                                }
+                            }
+
+
+                        }
+
+                        //place order
                         linePointOrder = client.PlaceOrder(CurrentLoadedSymbol, order.OrderSide, order.OrderType, order.TimeInForce, order.QuantityPerOrder,currentlimitprice );
 
                         if(linePointOrder.Error != null)
                         {
                             new Popup("Error", linePointOrder.Error.Message).Show();
                         }
+                        else
+                        {
+                            order.LastPlacedOrderId = linePointOrder.Data.Id; //set the new previous order id to be cancelled next
+                        }
                        
 
                     }
 
-                    //var orderInfo = client.GetOrder(placedOrder.Data.Id);
                     Thread.Sleep(10000);
                 }
 
@@ -390,7 +351,8 @@ namespace CrypoGraph
             CurrentLoadedSymbol = symbol;
             CurrentInterval = interval;
             client.SetApiCredentials("8180a6a91e29425c90c2e2afe349aa71", "e36a6307025c4b4fb1b20a4a00c4c9ef");
-            var bal = client.GetBalance(symbol);
+            
+            //get min trade size 
             var markets = client.GetSymbols();
             if(markets.Data != null)
             {
@@ -398,6 +360,9 @@ namespace CrypoGraph
                 CurrentMinTradeSize = market.MinTradeSize;
                 
             }
+
+
+            //get high low data
             var summary = client.GetSymbolSummary(symbol);
             if(summary.Data != null)
             {
@@ -406,27 +371,37 @@ namespace CrypoGraph
 
             }
 
+            //get balance for currency
+            var balance = client.GetBalance(symbol.Substring(0,3));
+            if (balance.Data != null)
+            {
+                AccountBalance = balance.Data.Available.ToString() + " "+ balance.Data.Currency;
+            }
 
+            //get order history
             var orderhistory = client.GetOrderBook(symbol);
             if(orderhistory.Data != null)
             {
                 OrderBook = orderhistory.Data;
             }
 
-
+            //get closed orders
             var d = client.GetClosedOrders(symbol);
             if (d.Data != null)
             {
                 ClosedOrders = new ObservableCollection<BittrexOrderV3>(d.Data);
             }
 
-
+            //get open orders
             var o = client.GetOpenOrders(symbol);
             if (o.Data != null)
             {
                 OpenOrders = new ObservableCollection<BittrexOrderV3>(o.Data);
             }
 
+
+
+            //reload chart
             string intervalstring = "";
             if(interval == CandleInterval.Day1)
             {
