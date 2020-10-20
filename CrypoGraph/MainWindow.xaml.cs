@@ -50,7 +50,7 @@ namespace CrypoGraph
         public event PropertyChangedEventHandler PropertyChanged;
         protected void OnPropertyChanged([CallerMemberName] string name = null)
         {
-            if(name == "ActiveLineOrders")
+            if (name == "ActiveLineOrders")
             {
                 showAllbtn_Checked(null, null);
 
@@ -85,6 +85,7 @@ namespace CrypoGraph
             }
         }
 
+       
         private decimal _currentPricehigh;
         public decimal CurrentPriceHigh
         {
@@ -126,7 +127,7 @@ namespace CrypoGraph
             }
         }
 
-        
+
         private string _ActionHistory;
         public string ActionHistory
         {
@@ -169,6 +170,24 @@ namespace CrypoGraph
                 OnPropertyChanged("CandleIntervals");
             }
         }
+
+
+
+              private ObservableCollection<LineOrder> _FulfilledOrders;
+        public ObservableCollection<LineOrder> FulfilledOrders
+        {
+            get
+            {
+                return _FulfilledOrders;
+            }
+            set
+            {
+                _FulfilledOrders = value;
+
+                OnPropertyChanged("FulfilledOrders");
+            }
+        }
+        
         private ObservableCollection<LineOrder> _actives;
         public ObservableCollection<LineOrder> ActiveLineOrders
         {
@@ -179,7 +198,7 @@ namespace CrypoGraph
             set
             {
                 _actives = value;
-               
+
                 OnPropertyChanged("ActiveLineOrders");
             }
         }
@@ -196,7 +215,7 @@ namespace CrypoGraph
                 OnPropertyChanged("ActiveLineOrdersFiltered");
             }
         }
-        
+
 
         private ObservableCollection<BittrexOrderV3> _orderhistory;
         public ObservableCollection<BittrexOrderV3> ClosedOrders
@@ -293,17 +312,15 @@ namespace CrypoGraph
                     OpenOrders = new ObservableCollection<BittrexOrderV3>(o.Data);
                 }
 
-                var balance = client.GetBalance(CurrentLoadedSymbol);
+                var balance = client.GetBalance(CurrentLoadedSymbol.Substring(0,3));
 
-                if(balance.Data != null)
+                if (balance.Data != null)
                 {
                     AccountBalance = balance.Data.Total.ToString();
                 }
-                else
-                {
-                    AccountBalance = "0.00";
-                }
 
+              
+           
             });
 
 
@@ -319,85 +336,126 @@ namespace CrypoGraph
             return (price - order.YIntercept) / order.Slope;
         }
 
-       
+
 
         public void MakeOrder(LineOrder order)
         {
             DateTime currenttime;
             decimal currentlimitprice;
             WebCallResult<BittrexOrderV3> linePointOrder;
-            
-                
+
+
             currenttime = DateTime.Now;
             var limit = CalculateLimitAtSpecificTime(DateTimeAxis.ToDouble(currenttime), order);
 
-                if (limit != 0)
+            //cancel the previous order if needed
+            if (order.TimeInForce == TimeInForce.GoodTillCancelled)
+            {
+                if (order.LastPlacedOrderId != null)//cancel previous open order
                 {
-                    currentlimitprice = Convert.ToDecimal(limit);
-                    currentlimitprice = Convert.ToDecimal(currentlimitprice.ToString("F5"));
-                    linePointOrder = client.PlaceOrder(CurrentLoadedSymbol, order.OrderSide, order.OrderType, order.TimeInForce, order.QuantityPerOrder, currentlimitprice);
-
-                    if (linePointOrder.Error != null)
+                    var or = client.GetOrder(order.LastPlacedOrderId);
+                    if(or.Error == null)
                     {
-                        currentlimitprice = Convert.ToDecimal(pointOnLine.Y);
-                        if (order.TimeInForce == TimeInForce.GoodTillCancelled)
+                        if(or.Data.Status == OrderStatus.Closed)
                         {
-                            if (order.LastPlacedOrderId != null)//cancel previous open order
+                            order.ActiveTotal += double.Parse(or.Data.Proceeds.ToString()); //increase the active total for this order based on the previous orders proceeds
+                            if (order.ActiveTotal > order.FulfilmentThreshold)
                             {
-                                var res = client.CancelConditionalOrder(order.LastPlacedOrderId);
-                                if(res.Error != null)
-                                {
-                                    new Popup("Failed to Cancel Order", res.Error.Message).Show();
-                                }
+                                FulfilledOrders.Add(order);
+                                ActiveLineOrders.Remove(order);
+                                ActionHistory += DateTime.Now.TimeOfDay.ToString() + " - " + (order.OrderSide == OrderSide.Buy ? "Buy Line" : "Sell Line") + order.Symbol + " Fulfilled" + "\n";
                             }
-
-
+                            else
+                            {
+                                ActiveLineOrders.Add(order);
+                            }
                         }
+                       
+                    }
 
-                        //place order
-                        linePointOrder = client.PlaceOrder(CurrentLoadedSymbol, order.OrderSide, order.OrderType, order.TimeInForce, order.QuantityPerOrder,currentlimitprice );
+                    //cancel order
+                    var res = client.CancelConditionalOrder(order.LastPlacedOrderId);
+                    if (res.Error != null)
+                    {
                         Application.Current.Dispatcher.Invoke(() =>
                         {
-                            ActionHistory += DateTime.Now.TimeOfDay.ToString()+" - " + "Error: "+linePointOrder.Error.Message+"\n";
-                            //new Popup("Error", linePointOrder.Error.Message).Show();
+                            ActionHistory += DateTime.Now.TimeOfDay.ToString() + " - " + "Error: " + " Failed to Cancel Order" + res.Error.Message+"\n";
                         });
                     }
                     else
                     {
-                        order.OrderIDs.Add(linePointOrder.Data.Id);
-
-                    Application.Current.Dispatcher.Invoke(() =>
+                        Application.Current.Dispatcher.Invoke(() =>
                         {
-                            ActionHistory += DateTime.Now.TimeOfDay.ToString() + " - " + (order.OrderSide == OrderSide.Buy ? "Buy" : "Sell") + order.Symbol + " at $" + currentlimitprice + "\n";
-                            //new Popup("Order Placed", order.Symbol + " at $" + currentlimitprice).Show();
+                            ActionHistory += DateTime.Now.TimeOfDay.ToString() + " - " + "Order Cancelled: ID = " +order.LastPlacedOrderId + "\n";
                         });
                     }
                 }
-                else
-                {
 
+
+            }
+
+            if (limit != 0)
+            {
+
+                currentlimitprice = Convert.ToDecimal(limit);
+                currentlimitprice = Convert.ToDecimal(currentlimitprice.ToString("F5"));
+                //place order
+                linePointOrder = client.PlaceOrder(CurrentLoadedSymbol, order.OrderSide, order.OrderType, order.TimeInForce, order.QuantityPerOrder, currentlimitprice);
+
+                if (linePointOrder.Error != null)
+                {//error occured, log it
                     Application.Current.Dispatcher.Invoke(() =>
                     {
-                        ActionHistory += DateTime.Now.TimeOfDay.ToString() + " - " + "Limit price could not be calculated" + "\n";
-                            new Popup("Error", linePointOrder.Error.Message).Show();
+                        ActionHistory += DateTime.Now.TimeOfDay.ToString() + " - " + "Error: " + linePointOrder.Error.Message + "\n";
+                    });
+                  
+                }
+                else
+                {
+                    order.OrderIDs.Add(linePointOrder.Data.Id);
+                    order.LastPlacedOrderId = linePointOrder.Data.Id;
+                    if (linePointOrder.Data.Status == OrderStatus.Closed)
+                    {
+                        order.ActiveTotal += double.Parse(linePointOrder.Data.Proceeds.ToString()); //increase the active total for this order based on the previous orders proceeds
+                    }
+                   
+                    //log the order
+                    Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        ActionHistory += DateTime.Now.TimeOfDay.ToString() + " - " + (order.OrderSide == OrderSide.Buy ? "Buy" : "Sell") + order.Symbol + " at $" + currentlimitprice + "\n";
+                        //new Popup("Order Placed", order.Symbol + " at $" + currentlimitprice).Show();
+                        if (order.ActiveTotal > order.FulfilmentThreshold)
+                        {
+                            FulfilledOrders.Add(order);
+                            ActiveLineOrders.Remove(order);
+                            ActionHistory += DateTime.Now.TimeOfDay.ToString() + " - " + (order.OrderSide == OrderSide.Buy ? "Buy Line" : "Sell Line") + order.Symbol + " Fulfilled"+ "\n";
                         }
                         else
                         {
-                            order.LastPlacedOrderId = linePointOrder.Data.Id; //set the new previous order id to be cancelled next
+                            ActiveLineOrders.Add(order);
                         }
-                       
-
-                        //new Popup("Error", "Limit price could not be calculated").Show();
                     });
 
-                    Thread.Sleep(10000);
                 }
+            }
+            else
+            {
+  
+                Application.Current.Dispatcher.Invoke(() =>
+                {
+                    ActionHistory += DateTime.Now.TimeOfDay.ToString() + " - " + "Limit price could not be calculated" + "\n";
+                  
+                });
+                OnPropertyChanged("FulfilledOrders");
+
+                Thread.Sleep(10000); //keep running every 10 seconds
+            }
         }
 
         private void UpdateChart(BittrexSymbolSummaryV3 update)
         {
             var candles = (CandleStickSeries)plotmodel.Series[0];
-            
+
         }
         private Thread upcomingThread;
         private Thread executeThread;
@@ -418,6 +476,7 @@ namespace CrypoGraph
             marketSummaries = JsonConvert.DeserializeObject<MarketSummary[]>(market24hoursummary);
 
             ActiveLineOrders = new ObservableCollection<LineOrder>();
+            FulfilledOrders = new ObservableCollection<LineOrder>();
             ActiveLineOrdersFiltered = new ObservableCollection<LineOrder>();
             UpcomingOrders = new ObservableCollection<UpcomingOrder>();
             ListOfCoins = new List<string>();
@@ -434,14 +493,14 @@ namespace CrypoGraph
                 ListOfCoins.Add(coinsummary.Symbol);
             }
             ListOfCoins = ListOfCoins;
-            
-            LoadChart("BTC-EUR", CandleInterval.Hour1);
+
+            LoadChart("BTC-USD", CandleInterval.Hour1);
 
             StartLookingForUpcomingOrders();
             StartLookingToExecuteOrders();
             StartUpdatingGraph();
 
-            }
+        }
 
         private void MainWindow_Closed(object sender, EventArgs e)
         {
@@ -457,20 +516,20 @@ namespace CrypoGraph
             CurrentLoadedSymbol = symbol;
             CurrentInterval = interval;
             client.SetApiCredentials("8180a6a91e29425c90c2e2afe349aa71", "e36a6307025c4b4fb1b20a4a00c4c9ef");
-            
+
             //get min trade size 
             var markets = client.GetSymbols();
-            if(markets.Data != null)
+            if (markets.Data != null)
             {
                 var market = markets.Data.FirstOrDefault(l => l.Symbol == symbol);
                 CurrentMinTradeSize = market.MinTradeSize;
-                
+
             }
 
 
             //get high low data
             var summary = client.GetSymbolSummary(symbol);
-            if(summary.Data != null)
+            if (summary.Data != null)
             {
                 CurrentPriceHigh = summary.Data.High;
                 CurrentPriceLow = summary.Data.Low;
@@ -478,15 +537,15 @@ namespace CrypoGraph
             }
 
             //get balance for currency
-            var balance = client.GetBalance(symbol.Substring(0,3));
+            var balance = client.GetBalance(symbol.Substring(0, 3));
             if (balance.Data != null)
             {
-                AccountBalance = balance.Data.Available.ToString() + " "+ balance.Data.Currency;
+                AccountBalance = balance.Data.Available.ToString() + " " + balance.Data.Currency;
             }
 
             //get order history
             var orderhistory = client.GetOrderBook(symbol);
-            if(orderhistory.Data != null)
+            if (orderhistory.Data != null)
             {
                 OrderBook = orderhistory.Data;
             }
@@ -505,43 +564,43 @@ namespace CrypoGraph
                 OpenOrders = new ObservableCollection<BittrexOrderV3>(o.Data);
             }
 
-            var balance = client.GetBalance(CurrentLoadedSymbol);
-            if (balance.Data != null)
-            {
-                AccountBalance = balance.Data.Total.ToString();
-            }
-            else
-            {
-                AccountBalance = "0.00";
-            }
+            //var balance = client.GetBalance(CurrentLoadedSymbol);
+            //if (balance.Data != null)
+            //{
+            //    AccountBalance = balance.Data.Total.ToString();
+            //}
+            //else
+            //{
+            //    AccountBalance = "0.00";
+            //}
 
             string intervalstring = "";
-            if(interval == CandleInterval.Day1)
+            if (interval == CandleInterval.Day1)
             {
                 intervalstring = "DAY_1";
             }
-            else if(interval == CandleInterval.Hour1)
+            else if (interval == CandleInterval.Hour1)
             {
                 intervalstring = "HOUR_1";
 
             }
-            else if(interval == CandleInterval.Minute1)
+            else if (interval == CandleInterval.Minute1)
             {
                 intervalstring = "MINUTE_1";
 
             }
-            else if(interval == CandleInterval.Minutes5)
+            else if (interval == CandleInterval.Minutes5)
             {
                 intervalstring = "MINUTE_5";
 
             }
 
-            var coincandledatajson = CallRestMethod("https://api.bittrex.com/v3/markets/" + symbol + "/candles/" + intervalstring  + "/recent");
+            var coincandledatajson = CallRestMethod("https://api.bittrex.com/v3/markets/" + symbol + "/candles/" + intervalstring + "/recent");
             var coincandledata = JsonConvert.DeserializeObject<CandleData[]>(coincandledatajson);
-           
+
             coinsCb.SelectedItem = symbol; //defualt
 
-            
+
             foreach (CandleData candle in coincandledata)
             {
                 candle.Time = candle.StartsAt.DateTime;
@@ -610,7 +669,7 @@ namespace CrypoGraph
 
             plotview.Model = model;
 
-            if(LimitLineSeries != null)
+            if (LimitLineSeries != null)
             {
                 DrawLimitLine(OrderSide.Buy, LimitLineSeries);
             }
@@ -625,7 +684,7 @@ namespace CrypoGraph
                 var datapoint = Axis.InverseTransform(startpos, XAxis, YAxis);
                 StartPoint = datapoint;
             }
-          
+
         }
 
         private void Model_MouseUp(object sender, OxyMouseEventArgs e)
@@ -639,12 +698,12 @@ namespace CrypoGraph
                 Mouse.OverrideCursor = Cursors.Arrow;
                 DrawLimitLine(OrderSide.Buy);
                 ShowLimitConfigWindow();
-                
+
             }
-           
+
         }
 
-        
+
 
         public void StartLookingToExecuteOrders()
         {
@@ -660,7 +719,7 @@ namespace CrypoGraph
                     {
                         foreach (UpcomingOrder order in UpcomingOrders)
                         {//if the current time 30 seconds from now is greater than the upcoming order  time, make the order if it hasnt been made already
-                            if(currettime.AddSeconds(10).CompareTo(order.Time) > 0)
+                            if (currettime.AddSeconds(10).CompareTo(order.Time) > 0)
                             {
                                 if (!order.StatusCompleted)
                                 {
@@ -670,10 +729,10 @@ namespace CrypoGraph
 
                                 }
                             }
-                          
+
                         }
                     }
-                    
+
                 }
 
 
@@ -700,12 +759,9 @@ namespace CrypoGraph
 
             if (balance.Data != null)
             {
-                AccountBalance = balance.Data.Total.ToString();
+                AccountBalance = balance.Data.Available.ToString() + " " + balance.Data.Currency;
             }
-            else
-            {
-                AccountBalance = "0.00";
-            }
+            
         }
         private bool UpcomingOrdersThreadStopped = false;
         private bool ExecuteOrdersThreadStopped = false;
@@ -713,7 +769,8 @@ namespace CrypoGraph
 
         public void StartUpdatingGraph()
         {
-            new Thread(() => {
+            new Thread(() =>
+            {
 
                 int count = 0;
                 while (!UpdateGraphThreadStopped)
@@ -727,23 +784,24 @@ namespace CrypoGraph
                             Cursor = Cursors.Arrow;
                         });
 
-                        
+
                     }
                     Thread.Sleep(10);
                     count++;
                 }
 
             }).Start();
-           
+
         }
 
         public void StartLookingForUpcomingOrders()
         {
-            executeThread = new Thread(() => {
+            executeThread = new Thread(() =>
+            {
                 int count = 500;
                 while (!UpcomingOrdersThreadStopped)
                 {
-                    if(count == 500)//wait 5seconds
+                    if (count == 500)//wait 5seconds
                     {
                         UpdateOrders();
 
@@ -813,9 +871,9 @@ namespace CrypoGraph
                                 }
                             }
                         }
-                       
+
                     }
-                    
+
                     Thread.Sleep(10);
                     count++;
 
@@ -901,9 +959,9 @@ namespace CrypoGraph
             LimitConfigViewModel limitVM = new LimitConfigViewModel(StartPoint, EndPoint, LimitLineSeries, CurrentLoadedSymbol, CurrentMinTradeSize);
             LimitCondig lc = new LimitCondig(limitVM);
             lc.ShowDialog();
-            if(limitVM.LineOrder != null)
+            if (limitVM.LineOrder != null)
             {
-                ActiveLineOrders.Insert(0,limitVM.LineOrder);
+                ActiveLineOrders.Insert(0, limitVM.LineOrder);
                 OverrideAddingUpcoming();
                 LimitLineSeries = limitVM.LineOrder.LimitLineSeries;
                 plotmodel.InvalidatePlot(true);
@@ -926,13 +984,13 @@ namespace CrypoGraph
         {
             if (plotmodel.Series.Any(l => l.Title == "Limit Line"))
             {
-                while(plotmodel.Series.FirstOrDefault(l => l.Title == "Limit Line") != null)
+                while (plotmodel.Series.FirstOrDefault(l => l.Title == "Limit Line") != null)
                 {
                     var match = plotmodel.Series.First(l => l.Title == "Limit Line");
                     plotmodel.Series.Remove(match);
                     plotmodel.InvalidatePlot(true);
                 }
-              
+
 
             }
         }
@@ -941,8 +999,8 @@ namespace CrypoGraph
         {
             //remove rpreivoous limit line if exists
             RemoveLimitLine();
-           
-          
+
+
             if (line == null)
             {
                 //add new limit line
@@ -956,7 +1014,7 @@ namespace CrypoGraph
                 limitlineseries.MarkerSize = 3;
                 plotmodel.Series.Add(limitlineseries);
                 plotmodel.InvalidatePlot(true);
-                LimitLineSeries                                                                                                                                                                         = limitlineseries;
+                LimitLineSeries = limitlineseries;
             }
             else
             {
@@ -966,10 +1024,10 @@ namespace CrypoGraph
                     plotmodel.InvalidatePlot(true);
                     LimitLineSeries = line;
                 }
-               
+
             }
-           
-            
+
+
         }
 
         //public async Task<List<SocketResponse>> Subscribe(string[] channels)
@@ -995,14 +1053,14 @@ namespace CrypoGraph
 
         private void coinsCb_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            if(coinsCb.SelectedItem != null && coinsCb.SelectedItem != CurrentLoadedSymbol)
+            if (coinsCb.SelectedItem != null && coinsCb.SelectedItem != CurrentLoadedSymbol)
             {
                 LoadChart(coinsCb.SelectedItem.ToString(), CandleInterval.Hour1);
 
             }
         }
 
-      
+
         private void intervalCb_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (intervalCb.SelectedItem != null)
@@ -1011,7 +1069,7 @@ namespace CrypoGraph
                 string selectedstring = (string)intervalCb.SelectedItem;
                 CandleInterval intervalToUse = CandleInterval.Day1;
 
-                if(selectedstring == "1 Minute")
+                if (selectedstring == "1 Minute")
                 {
                     intervalToUse = CandleInterval.Minute1;
                 }
@@ -1046,7 +1104,7 @@ namespace CrypoGraph
                 return;
             if (CurrentLoadedSymbol != item.Symbol)
             {
-                
+
                 LoadChart(item.Symbol, CurrentInterval);
 
             }
@@ -1058,7 +1116,7 @@ namespace CrypoGraph
 
         private void Button_Click(object sender, RoutedEventArgs e)
         {
-            if(activeordersLB.SelectedItem != null)
+            if (activeordersLB.SelectedItem != null)
             {
                 CancelLineOrder();
             }
@@ -1069,7 +1127,7 @@ namespace CrypoGraph
             var orderToRemove = (LineOrder)activeordersLB.SelectedItem;
             RemoveLimitLine();
             ActiveLineOrders.Remove(orderToRemove);
-            if (UpcomingOrders.FirstOrDefault(l=> l.Order.LimitLineSeries == orderToRemove.LimitLineSeries) != null)
+            if (UpcomingOrders.FirstOrDefault(l => l.Order.LimitLineSeries == orderToRemove.LimitLineSeries) != null)
             {
                 UpcomingOrders.Remove(UpcomingOrders.FirstOrDefault(l => l.Order.LimitLineSeries == orderToRemove.LimitLineSeries));
                 OnPropertyChanged("UpcomingOrders");
@@ -1097,10 +1155,10 @@ namespace CrypoGraph
 
         private void showAllbtn_Checked(object sender, RoutedEventArgs e)
         {
-            
+
             if ((bool)showAllbtn.IsChecked)
             {
-                if(ActiveLineOrders != null)
+                if (ActiveLineOrders != null)
                 {
                     ActiveLineOrdersFiltered = new ObservableCollection<LineOrder>(ActiveLineOrders);
 
@@ -1115,7 +1173,8 @@ namespace CrypoGraph
                 {
                     if (order.OrderSide == OrderSide.Buy)
                     {
-                        Dispatcher.Invoke(() => {
+                        Dispatcher.Invoke(() =>
+                        {
                             ActiveLineOrdersFiltered.Add(order);
                         });
 
@@ -1130,7 +1189,8 @@ namespace CrypoGraph
                 {
                     if (order.OrderSide == OrderSide.Sell)
                     {
-                        Dispatcher.Invoke(() => {
+                        Dispatcher.Invoke(() =>
+                        {
                             ActiveLineOrdersFiltered.Add(order);
                         });
 
@@ -1152,12 +1212,13 @@ namespace CrypoGraph
 
         private void ShowAllLimitLines()
         {
-            foreach(LineOrder order in ActiveLineOrders)
+            foreach (LineOrder order in ActiveLineOrders)
             {
                 if (!plotmodel.Series.Contains(order.LimitLineSeries))
                 {
                     plotmodel.Series.Add(order.LimitLineSeries);
-                    plotmodel.InvalidatePlot(true);                }
+                    plotmodel.InvalidatePlot(true);
+                }
             }
         }
     }
@@ -1167,7 +1228,7 @@ namespace CrypoGraph
         Minute1,
         Minutes5,
         Hour1,
-        Day1, 
+        Day1,
 
     }
 

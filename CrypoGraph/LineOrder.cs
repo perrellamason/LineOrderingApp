@@ -14,6 +14,13 @@ namespace CrypoGraph
     {
         public OrderTypeV3 OrderType { get; set; }
         public OrderSide OrderSide { get; set; }
+        public string DisplayProceeds {
+            get
+            {
+                return OrderSide == OrderSide.Sell ? "+" + ActiveTotal.ToString() : "-" + ActiveTotal.ToString();
+            } 
+        }
+
         public TimeInForce TimeInForce { get; set; }
         public LineSeries LimitLineSeries { get; set; }
         public List<string> OrderIDs { get; set; }
@@ -31,6 +38,8 @@ namespace CrypoGraph
 
         public double Slope { get; set; }
         public double YIntercept { get; set; }
+        public double FulfilmentThreshold { get; set; }
+        public double ActiveTotal { get; set; }
 
     }
 }

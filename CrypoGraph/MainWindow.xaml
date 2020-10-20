@@ -176,6 +176,32 @@
                             </ListBox>
 
                         </TabItem>
+                        <TabItem Header="Fulfilled" HorizontalAlignment="Center">
+                            <ListBox Name="sss" BorderBrush="Black"  Background="Transparent" ItemsSource="{Binding FulfilledOrders}">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid >
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="*"/>
+                                                <RowDefinition Height="*"/>
+                                            </Grid.RowDefinitions>
+
+                                            <StackPanel Orientation="Vertical" Grid.Row="1">
+                                                <TextBlock Grid.Row="1" Text="Limit Reached:"  Foreground="WhiteSmoke" />
+                                                <TextBlock Grid.Row="1" Text="{Binding FulfilmentThreshold}"  Foreground="DarkOrange" />
+                                                <TextBlock  Grid.Row="1" Text="Currency: "  Foreground="WhiteSmoke" />
+                                                <TextBlock  Grid.Row="1" Text="{Binding Symbol}"  Foreground="DarkOrange" />
+                                                <TextBlock  Grid.Row="1" Text="Price: "  Foreground="WhiteSmoke" />
+                                                <TextBlock  Grid.Row="1" Text="{Binding DisplayProceeds}"  Foreground="DarkOrange" />
+
+                                            </StackPanel>
+
+                                        </Grid>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+
+                        </TabItem>
                     </TabControl>
 
                 </ScrollViewer>
@@ -207,6 +233,8 @@
                     <Label Content="Min Trade Size: " Foreground="DarkOrange"/>
                     <Label Content="{Binding CurrentMinTradeSize}" Foreground="WhiteSmoke"/>
                 </StackPanel>
+                
+
 
                 
             </UniformGrid>

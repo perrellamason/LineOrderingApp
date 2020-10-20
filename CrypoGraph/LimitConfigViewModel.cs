@@ -124,8 +124,25 @@ namespace CrypoGraph
                 ErrorMsg = "You must choose an Order Side";
                 return;
             }
+
+            if (FulfillmentThreshold == 0)
+            {
+                ErrorMsg = "You must choose a threshold for the line to be Fulfilled.  Use -1 if you want to run the line order to completion.";
+                return;
+            }else if(FulfillmentThreshold  < 0)
+            {
+                if(FulfillmentThreshold != -1)
+                {
+                    ErrorMsg = "Invalid Fulfillment Threshold.  Use -1 if you want to run the line order to completion.";
+                    return;
+                }
+            }
+
             string id;
             AddOrderPoints();
+
+
+
             LineOrder order = new LineOrder()
             {
                 Symbol = Symbol,
@@ -139,7 +156,8 @@ namespace CrypoGraph
                 OrdersPerHour = OrdersPerHour,
                 QuantityPerOrder = QuantityPerOrder,
                 Slope = Slope,
-                YIntercept = Yintercept
+                YIntercept = Yintercept,
+                FulfilmentThreshold = FulfillmentThreshold
             };
             LineOrder = order;
             Screen.Close();
@@ -428,6 +446,25 @@ namespace CrypoGraph
 
         }
 
+        private double _ful;
+        public double FulfillmentThreshold
+        {
+            get
+            {
+                return _ful;
+            }
+
+            set
+            {
+                if (_ful == value)
+                {
+                    return;
+                }
+                _ful = value;
+                OnPropertyChanged("FulfillmentThreshold");
+            }
+
+        }
 
         private bool _isbuy;
         public bool isBuy
@@ -448,6 +485,7 @@ namespace CrypoGraph
             }
 
         }
+
 
         private bool _issell;
         public bool isSell
