@@ -187,7 +187,7 @@
                                             </Grid.RowDefinitions>
 
                                             <StackPanel Orientation="Vertical" Grid.Row="1">
-                                                <TextBlock Grid.Row="1" Text="Limit Reached:"  Foreground="WhiteSmoke" />
+                                                <TextBlock Grid.Row="1" Text="Fulfillment Reached:"  Foreground="WhiteSmoke" />
                                                 <TextBlock Grid.Row="1" Text="{Binding FulfilmentThreshold}"  Foreground="DarkOrange" />
                                                 <TextBlock  Grid.Row="1" Text="Currency: "  Foreground="WhiteSmoke" />
                                                 <TextBlock  Grid.Row="1" Text="{Binding Symbol}"  Foreground="DarkOrange" />

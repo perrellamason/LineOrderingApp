@@ -5,14 +5,15 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:CrypoGraph"
         mc:Ignorable="d"
-        Title="Sign In" Height="175" Width="300" Background="Black" Foreground="DarkOrange" WindowStartupLocation="CenterScreen">
+        Title="Sign In" Height="215" Width="300" Background="Black" Foreground="DarkOrange" WindowStartupLocation="CenterScreen" ResizeMode="NoResize">
     <Grid>
+        <Label Foreground="Red" Name="errormsg" HorizontalAlignment="Center"/>
         <UniformGrid Rows="2" Columns="2">
             <Label Content="API Key: " Width="100" Height="30"  Foreground="DarkOrange" HorizontalAlignment="Right"/>
-            <TextBox Width="150" Height="30"/>
+            <TextBox Name="keytb" Width="150" Height="30"/>
             <Label Content="API Secret: " Width="100" Height="30"  Foreground="DarkOrange" HorizontalAlignment="Right"/>
-            <TextBox Width="150" Height="30" />
+            <TextBox Name="secrettb" Width="150" Height="30" />
         </UniformGrid>
-        <Button Content="Log In" HorizontalAlignment="Center" VerticalAlignment="Bottom"/>
+        <Button Content="Log In" Click="Button_Click" HorizontalAlignment="Center" VerticalAlignment="Bottom"/>
     </Grid>
 </Window>

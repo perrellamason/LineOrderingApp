@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Bittrex.Net;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -19,9 +20,39 @@ namespace CrypoGraph
     /// </summary>
     public partial class SignIn : Window
     {
+        public string Key;
+        public string Secret;
         public SignIn()
         {
             InitializeComponent();
+        }
+        BittrexClientV3 client = new BittrexClientV3();
+
+        private void Button_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                client.SetApiCredentials(keytb.Text, secrettb.Text);
+                var x = client.GetAccount();
+                if (x.Error != null && x.Error.Message == "Server error: APIKEY_INVALID")
+                {
+                    errormsg.Content = "Invalid API Key";
+                    return;
+                }
+            }
+            catch (Exception ex)
+            {
+                errormsg.Content = ex.Message;
+                return;
+            }
+           
+
+            //good key and secret.  continue
+            Key = keytb.Text;
+            Secret = secrettb.Text;
+
+
+            this.Close();
         }
     }
 }

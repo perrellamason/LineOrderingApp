@@ -267,13 +267,17 @@ namespace CrypoGraph
         {
             BittrexClient.SetDefaultOptions(new BittrexClientOptions()
             {
-                ApiCredentials = new ApiCredentials("8180a6a91e29425c90c2e2afe349aa71", "e36a6307025c4b4fb1b20a4a00c4c9ef"),
+
+               // ApiCredentials = new ApiCredentials("8180a6a91e29425c90c2e2afe349aa71", "e36a6307025c4b4fb1b20a4a00c4c9ef"),
+                ApiCredentials = new ApiCredentials(Key, Secret),
                 LogVerbosity = LogVerbosity.Info,
                 LogWriters = new List<TextWriter>() { Console.Out }
             });
             BittrexClientV3.SetDefaultOptions(new BittrexClientOptions()
             {
-                ApiCredentials = new ApiCredentials("8180a6a91e29425c90c2e2afe349aa71", "e36a6307025c4b4fb1b20a4a00c4c9ef"),
+                ApiCredentials = new ApiCredentials(Key, Secret),
+               // ApiCredentials = new ApiCredentials("8180a6a91e29425c90c2e2afe349aa71", "e36a6307025c4b4fb1b20a4a00c4c9ef"),
+               // ApiCredentials = new ApiCredentials("8180a6a91e29425c90c2e2afe349aa71", "e36a6307025c4b4fb1b20a4a00c4c9ef"),
                 LogVerbosity = LogVerbosity.Info,
                 LogWriters = new List<TextWriter>() { Console.Out }
             });
@@ -460,6 +464,9 @@ namespace CrypoGraph
         private Thread upcomingThread;
         private Thread executeThread;
 
+        private string Key;
+        private string Secret;
+
         public MainWindow()
         {
 
@@ -467,7 +474,15 @@ namespace CrypoGraph
             this.Closed += MainWindow_Closed;
             InitializeComponent();
             SignIn signin = new SignIn();
-            signin.Show();
+            signin.ShowDialog();
+            Key = signin.Key;
+            Secret = signin.Secret;
+            if (Key == null || Secret == null)
+            {
+                this.Close();
+                return;
+            }
+
             ActionHistory = "";
             Authenticate();
             DoBittrexNetStuff();
@@ -515,7 +530,9 @@ namespace CrypoGraph
         {
             CurrentLoadedSymbol = symbol;
             CurrentInterval = interval;
-            client.SetApiCredentials("8180a6a91e29425c90c2e2afe349aa71", "e36a6307025c4b4fb1b20a4a00c4c9ef");
+            //client.SetApiCredentials("118180a6a91e29425c90c2e2afe349aa71", "e36a6307025c4b4fb1b20a4a00c4c9ef");
+            client.SetApiCredentials(Key, Secret);
+
 
             //get min trade size 
             var markets = client.GetSymbols();
