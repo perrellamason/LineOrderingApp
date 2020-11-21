@@ -488,16 +488,7 @@ namespace CrypoGraph
             Properties.Settings.Default.Key = Key;
             Properties.Settings.Default.Save();
 
-            //if (ConfigurationManager.AppSettings.Count == 0)
-            //{
-            //    ConfigurationManager.AppSettings.Add("Key", Key);
-            //    ConfigurationManager.AppSettings.Add("Secret", Secret);
-            //}
-            //else
-            //{
-            //    ConfigurationManager.AppSettings["Key"] = Key;
-            //    ConfigurationManager.AppSettings["Secret"] = Secret;
-            //}
+        
 
             ActionHistory = "";
             Authenticate();

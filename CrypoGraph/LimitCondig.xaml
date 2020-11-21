@@ -24,8 +24,8 @@
 
 
             <UniformGrid Rows="1" Columns="2">
-                <TextBox IsReadOnly="{Binding PreserveLine}"  Text="{Binding StartString}" HorizontalAlignment="Center"  Foreground="DarkOrange" />
-                <TextBox IsReadOnly="{Binding PreserveLine}"  Text="{Binding EndString}" HorizontalAlignment="Center"  Foreground="DarkOrange" />
+                <TextBox IsReadOnly="{Binding PreserveLine}"  Text="{Binding StartString, Mode=TwoWay}" HorizontalAlignment="Center"  Foreground="DarkOrange" />
+                <TextBox IsReadOnly="{Binding PreserveLine}"  Text="{Binding EndString, Mode=TwoWay}" HorizontalAlignment="Center"  Foreground="DarkOrange" />
             </UniformGrid>
 
             <UniformGrid Rows="2" Columns="2">

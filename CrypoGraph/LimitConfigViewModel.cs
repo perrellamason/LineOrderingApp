@@ -163,10 +163,7 @@ namespace CrypoGraph
             Screen.Close();
 
 
-            //decimal? limit = new decimal(0.1500);
-            //var client = new BittrexClientV3();
-            //var placedOrder = client.PlaceOrder("ADA-USD", OrderSide.Buy, OrderTypeV3.Limit, TimeInForce, 50, limit);
-            //var orderInfo = client.GetOrder(placedOrder.Data.Id);
+       
 
 
         }
@@ -174,31 +171,12 @@ namespace CrypoGraph
         private bool AddOrderPoints()
         {
             List<DataPoint> orderpoints = (List<DataPoint>) limitLine.ItemsSource;
-            var start = orderpoints[0];
-            orderpoints.RemoveAt(0);
-            var last = orderpoints[0];
-            orderpoints.Clear();
+            var start = Start;
+            var last = End;
+            orderpoints.Clear(); //remove the previous start and end points
 
-            //if (!PreserveLine)
-            //{
-            //    try
-            //    {
-            //        var newstartdate = DateTime.Parse(StartString);
 
-            //    }
-            //    catch
-            //    {
-            //        ErrorMsg = "Could not parse Start String";
-                    
-            //    }
-            //    DateTime.TryParse(StartString, )
-
-            //    var newstart = new DataPoint()
-            //    //override the start and end postions with what was typed in UI
-
-            //}
-
-            //use orders per  hour to calculate points
+            //coverride the start time with the current time if it is in the past.     
             var time = DateTime.Now;
             var timedouble = DateTimeAxis.ToDouble(time);
             if(timedouble < start.X)//if the time right now is less than the start time of the line, use the start time of the line, else override it with the current time
@@ -236,102 +214,7 @@ namespace CrypoGraph
 
             return true;
         }
-
-        BittrexSocketClientV3 socketClient = new BittrexSocketClientV3();
-        CryptoExchange.Net.Objects.WebCallResult<IEnumerable<BittrexSymbolSummary>> marketSummaries1;
-
-        private void Authenticate()
-        {
-            BittrexClient.SetDefaultOptions(new BittrexClientOptions()
-            {
-                ApiCredentials = new ApiCredentials("8180a6a91e29425c90c2e2afe349aa71", "e36a6307025c4b4fb1b20a4a00c4c9ef"),
-                LogVerbosity = LogVerbosity.Info,
-                LogWriters = new List<TextWriter>() { Console.Out }
-            });
-            BittrexClientV3.SetDefaultOptions(new BittrexClientOptions()
-            {
-                ApiCredentials = new ApiCredentials("8180a6a91e29425c90c2e2afe349aa71", "e36a6307025c4b4fb1b20a4a00c4c9ef"),
-                LogVerbosity = LogVerbosity.Info,
-                LogWriters = new List<TextWriter>() { Console.Out }
-            });
-        }
-
-        public void DoBittrexNetStuff()
-        {
-
-            Authenticate();
-            //using (var client = new BittrexClient())
-            //{
-            //    // public
-            //    var markets = client.GetSymbols();
-            //    var currencies = client.GetCurrencies();
-            //    var price = client.GetTicker("BTC-ETH");
-            //    var marketSummary = client.GetSymbolSummary("BTC-ETH");
-            //    marketSummaries1 = client.GetSymbolSummaries();
-            //    var orderbook = client.GetOrderBook("BTC-ETH");
-            //    //var marketHistory = client.GetSy("BTC-ETH");
-
-            //    // private
-            //    // Commented to prevent accidental order placement
-
-
-
-            //    var openOrders = client.GetOpenOrders("BTC-NEO");
-            //    var orderHistory = client.GetOrderHistory("BTC-NEO");
-
-            //    var balance = client.GetBalance("NEO");
-            //    var balances = client.GetBalances();
-            //    var depositAddress = client.GetDepositAddress("BTC");
-            //    var withdraw = client.Withdraw("TEST", 1, "TEST", "TEST");
-            //    var withdrawHistory = client.GetWithdrawalHistory();
-            //    var depositHistory = client.GetDepositHistory();
-            //}
-
-            ////placing limit order
-            //using (var client = new BittrexClientV3())
-            //{
-            //    var marketSummary = client.GetSymbolSummary("ADA-USD");
-
-
-            //    //decimal? limit = new decimal(0.1500);
-
-            //    //var placedOrder = client.PlaceOrder("ADA-USD", OrderSide.Buy, OrderTypeV3.Limit, TimeInForce, 50, limit);
-            //    //var orderInfo = client.GetOrder(placedOrder.Data.Id);
-            //    //var canceledOrder = client.CancelOrder(placedOrder.Data.Uuid);
-
-            //}
-
-
-            // Websocket
-
-            //socketClient.SubscribeToMarketSummariesUpdate(data =>
-            //{
-            //    var eth = data.SingleOrDefault(d => d.MarketName == "BTC-ETH");
-            //    if (eth != null)
-            //        UpdateLastPrice(eth.Last);
-            //});
-
-            //using (var client = new BittrexClient())
-            //{
-            //    var result = client.GetMarketSummary("BTC-ETH");
-            //    UpdateLastPrice(result.Data.Last);
-            //    label2.Invoke(new Action(() => { label2.Text = "BTC-ETH Volume: " + result.Data.Volume; }));
-            //}
-
-            //var subscription = socketClient.SubscribeToSymbolSummaryUpdatesAsync(summaries =>
-            //{
-
-            //});
-
-
-
-            //var subscription3 = socketClient.SubscribeToOrderUpdatesAsync(order =>
-            //{
-            //});
-
-
-        }
-
+       
 
         public ICommand CancelOrderCommand
         {
@@ -455,7 +338,26 @@ namespace CrypoGraph
                 {
                     return;
                 }
+
+
                 _startstring = value;
+                try
+                {
+                    var time = DateTime.Parse(value);
+                    if(_startstringprice != 0)
+                    {
+
+                        var x = DateTimeAxis.ToDouble(time);
+                        Start = new DataPoint(x, _startstringprice);
+
+                    }
+                }
+                catch(Exception e)
+                {
+                    ErrorMsg = "Invalid value for start time";
+                    return;
+                }
+
                 OnPropertyChanged("StartString");
             }
 
@@ -576,7 +478,26 @@ namespace CrypoGraph
                 {
                     return;
                 }
+
                 _endstring = value;
+                try
+                {
+                    var time = DateTime.Parse(value);
+                    if (_endstringprice != 0)
+                    {
+
+                        var x = DateTimeAxis.ToDouble(time);
+                        End = new DataPoint(x, _endstringprice);
+
+                    }
+                }
+                catch (Exception e)
+                {
+                    ErrorMsg = "Invalid value for end time";
+                    return;
+                }
+
+
                 OnPropertyChanged("EndString");
             }
 
