@@ -24,7 +24,17 @@ namespace CrypoGraph
         public string Secret;
         public SignIn()
         {
+           
             InitializeComponent();
+
+            if (Properties.Settings.Default.Secret != null)
+            {
+                secrettb.Text = Properties.Settings.Default.Secret;
+            }
+            if (Properties.Settings.Default.Key != null)
+            {
+                keytb.Text = Properties.Settings.Default.Key;
+            }
         }
         BittrexClientV3 client = new BittrexClientV3();
 

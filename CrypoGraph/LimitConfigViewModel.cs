@@ -201,7 +201,7 @@ namespace CrypoGraph
             //use orders per  hour to calculate points
             var time = DateTime.Now;
             var timedouble = DateTimeAxis.ToDouble(time);
-            if(timedouble < start.X)
+            if(timedouble < start.X)//if the time right now is less than the start time of the line, use the start time of the line, else override it with the current time
             {
                 //the  first point should be the start point not now.
                 timedouble = start.X;
@@ -349,7 +349,22 @@ namespace CrypoGraph
 
         }
 
-        public bool PreserveLine { get; set; }
+        private bool _preserveLine;
+        public bool PreserveLine {
+
+            get 
+            {
+                return _preserveLine;
+            }
+            
+            
+            set
+            {
+                _preserveLine = value;
+                OnPropertyChanged("PreserveLine");
+
+            }
+        }
 
         private List<double> _OrdersPerHourOptions;
         public List<double> OrdersPerHourOptions

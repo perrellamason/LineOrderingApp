@@ -12,6 +12,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Configuration;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -482,6 +483,21 @@ namespace CrypoGraph
                 this.Close();
                 return;
             }
+
+            Properties.Settings.Default.Secret = Secret;
+            Properties.Settings.Default.Key = Key;
+            Properties.Settings.Default.Save();
+
+            //if (ConfigurationManager.AppSettings.Count == 0)
+            //{
+            //    ConfigurationManager.AppSettings.Add("Key", Key);
+            //    ConfigurationManager.AppSettings.Add("Secret", Secret);
+            //}
+            //else
+            //{
+            //    ConfigurationManager.AppSettings["Key"] = Key;
+            //    ConfigurationManager.AppSettings["Secret"] = Secret;
+            //}
 
             ActionHistory = "";
             Authenticate();
